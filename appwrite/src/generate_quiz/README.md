@@ -67,8 +67,8 @@ curl -X POST https://your-appwrite-function-url \
 
 ## Supported Document Types
 
-- **Images**: Automatically extracts text using OCR
-- **Videos**: Samples frames and extracts text using OCR
+- **Images**: Encodes image bytes and extracts text using Gemini OCR
+- **Videos**: Encodes video bytes and extracts text using Gemini OCR
 - **PDFs**: Extracts text while ignoring structural artifacts
 - **YouTube**: Fetches video transcripts
 - **Text**: Processes plain text directly
@@ -88,3 +88,4 @@ curl -X POST https://your-appwrite-function-url \
 
 - `OPENROUTER_API_KEY` (required) - API key for OpenRouter LLM service
 - `OPENROUTER_MODEL` (optional) - LLM model to use (defaults to `z-ai/glm-4.5-air:free`)
+- `OCR_MODEL` (optional) - OCR vision model (defaults to `google/gemini-2.0-flash-lite-001`)

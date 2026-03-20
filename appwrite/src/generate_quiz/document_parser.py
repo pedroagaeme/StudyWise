@@ -1,16 +1,16 @@
 import base64
 import io
+import json
 import os
 import re
-import tempfile
 from urllib import parse
 from urllib import error, request
 
 from youtube_transcript_api import YouTubeTranscriptApi
 
-from appwrite.src.generate_quiz.config import MAX_LINK_BYTES, OCR_MAX_VIDEO_FRAMES, OCR_VIDEO_FRAME_STEP
+from appwrite.src.generate_quiz.config import MAX_LINK_BYTES, OPENROUTER_ENDPOINT
 
-_OCR_READER = None
+_OCR_MODEL = "google/gemini-2.0-flash-lite-001"
 
 
 def _strip_html(content):
@@ -71,81 +71,124 @@ def _looks_like_pdf_url(url):
     return path.endswith(".pdf")
 
 
-def _get_ocr_reader():
-    global _OCR_READER
-    if _OCR_READER is not None:
-        return _OCR_READER
+def _resolve_ocr_model():
+    model = str(os.environ.get("OCR_MODEL", "")).strip()
+    if model:
+        return model
+    return _OCR_MODEL
+
+
+def _call_gemini_ocr(media_bytes, mime_type, media_kind="image"):
+    api_key = str(os.environ.get("OPENROUTER_API_KEY", "")).strip().strip('"').strip("'")
+    if not api_key:
+        raise RuntimeError("Missing OPENROUTER_API_KEY environment variable")
+
+    encoded = base64.b64encode(media_bytes).decode("ascii")
+    safe_mime = str(mime_type or "application/octet-stream").strip().lower()
+
+    if media_kind == "video":
+        if not safe_mime.startswith("video/"):
+            safe_mime = "video/mp4"
+        ocr_text = "Extract all readable text from this video. Return plain text only."
+        media_part = {
+            "type": "file",
+            "file": {
+                "filename": "upload-video",
+                "file_data": f"data:{safe_mime};base64,{encoded}",
+            },
+        }
+    else:
+        if not safe_mime.startswith("image/"):
+            safe_mime = "image/png"
+        ocr_text = "Extract all readable text from this image. Return plain text only."
+        media_part = {
+            "type": "image_url",
+            "image_url": {"url": f"data:{safe_mime};base64,{encoded}"},
+        }
+
+    payload = {
+        "model": _resolve_ocr_model(),
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": ocr_text,
+                    },
+                    media_part,
+                ],
+            }
+        ],
+        "temperature": 0,
+    }
+
+    req = request.Request(
+        OPENROUTER_ENDPOINT,
+        method="POST",
+        data=json.dumps(payload).encode("utf-8"),
+    )
+    req.add_header("Content-Type", "application/json")
+    req.add_header("HTTP-Referer", "https://studywise.local")
+    req.add_header("X-Title", "StudyWise")
+    req.add_unredirected_header("Authorization", f"Bearer {api_key}")
 
     try:
-        import easyocr
-    except Exception as err:
-        raise RuntimeError("OCR library is not installed") from err
+        with request.urlopen(req, timeout=45) as response:
+            raw = response.read().decode("utf-8", errors="ignore")
+            parsed = json.loads(raw)
+    except (error.URLError, error.HTTPError, TimeoutError, json.JSONDecodeError) as err:
+        raise RuntimeError("OCR API request failed") from err
 
-    _OCR_READER = easyocr.Reader(["en"], gpu=False)
-    return _OCR_READER
+    choices = parsed.get("choices") if isinstance(parsed, dict) else None
+    if not isinstance(choices, list) or not choices:
+        return ""
+
+    message = choices[0].get("message") if isinstance(choices[0], dict) else {}
+    content = message.get("content") if isinstance(message, dict) else ""
+
+    if isinstance(content, str):
+        return content.strip()
+
+    if isinstance(content, list):
+        parts = []
+        for part in content:
+            if isinstance(part, dict):
+                text = str(part.get("text", "")).strip()
+                if text:
+                    parts.append(text)
+        return "\n".join(parts).strip()
+
+    return ""
 
 
-def _extract_text_from_image_bytes(image_bytes):
+def _extract_text_from_image_bytes(image_bytes, mime_type="image/png"):
     try:
-        import cv2
-        import numpy as np
+        from PIL import Image
     except Exception as err:
-        raise RuntimeError("Image OCR dependencies are not installed") from err
+        raise RuntimeError("Image processing dependencies are not installed") from err
 
-    image_array = np.frombuffer(image_bytes, dtype=np.uint8)
-    image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
-    if image is None:
-        raise ValueError("Invalid image bytes")
+    try:
+        image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        normalized = io.BytesIO()
+        image.save(normalized, format="PNG")
+        normalized_bytes = normalized.getvalue()
+    except Exception as err:
+        raise ValueError("Invalid image bytes") from err
 
-    reader = _get_ocr_reader()
-    result = reader.readtext(image, detail=0)
-    lines = [str(line).strip() for line in result if str(line).strip()]
+    raw_text = _call_gemini_ocr(normalized_bytes, mime_type, media_kind="image")
+    lines = [line.strip() for line in str(raw_text).splitlines() if line.strip()]
     if not lines:
         return ""
     return "\n".join(lines)
 
 
-def _extract_text_from_video_bytes(video_bytes):
-    try:
-        import cv2
-    except Exception as err:
-        raise RuntimeError("Video OCR dependencies are not installed") from err
-
-    temp_path = ""
-    try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_file:
-            temp_file.write(video_bytes)
-            temp_path = temp_file.name
-
-        capture = cv2.VideoCapture(temp_path)
-        if not capture.isOpened():
-            raise ValueError("Invalid video bytes")
-
-        reader = _get_ocr_reader()
-        frame_index = 0
-        extracted = []
-
-        while len(extracted) < OCR_MAX_VIDEO_FRAMES:
-            ok, frame = capture.read()
-            if not ok:
-                break
-
-            if frame_index % OCR_VIDEO_FRAME_STEP == 0:
-                frame_lines = reader.readtext(frame, detail=0)
-                text = " ".join(str(line).strip() for line in frame_lines if str(line).strip())
-                if text:
-                    extracted.append(text)
-
-            frame_index += 1
-
-        capture.release()
-        return "\n".join(extracted)
-    finally:
-        if temp_path:
-            try:
-                os.remove(temp_path)
-            except OSError:
-                pass
+def _extract_text_from_video_bytes(video_bytes, mime_type="video/mp4"):
+    raw_text = _call_gemini_ocr(video_bytes, mime_type, media_kind="video")
+    lines = [line.strip() for line in str(raw_text).splitlines() if line.strip()]
+    if not lines:
+        return ""
+    return "\n".join(lines)
 
 
 def _extract_text_from_pdf_bytes(pdf_bytes):
@@ -297,9 +340,9 @@ def _extract_text_from_link(url):
     if _is_pdf_content(content_type) or _looks_like_pdf_url(url):
         return _extract_text_from_pdf_bytes(raw)
     if _is_image_content(content_type):
-        return _extract_text_from_image_bytes(raw)
+        return _extract_text_from_image_bytes(raw, content_type)
     if _is_video_content(content_type):
-        return _extract_text_from_video_bytes(raw)
+        return _extract_text_from_video_bytes(raw, content_type)
 
     text = raw.decode("utf-8", errors="ignore")
     if "text/html" in content_type:
@@ -321,9 +364,9 @@ def _extract_text_from_file(item, context):
         if _is_pdf_content(content_type):
             return _extract_text_from_pdf_bytes(decoded_bytes)
         if _is_image_content(content_type):
-            return _extract_text_from_image_bytes(decoded_bytes)
+            return _extract_text_from_image_bytes(decoded_bytes, content_type)
         if _is_video_content(content_type):
-            return _extract_text_from_video_bytes(decoded_bytes)
+            return _extract_text_from_video_bytes(decoded_bytes, content_type)
         return decoded_bytes.decode("utf-8", errors="ignore")
     except (ValueError, TypeError) as decode_err:
         context.error(f"Failed to decode base64 file '{name}': {repr(decode_err)}")
