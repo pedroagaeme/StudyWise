@@ -1,0 +1,5 @@
+appwrite
+youtube-transcript-api
+easyocr
+opencv-python-headless
+pypdf
