@@ -6,6 +6,8 @@ import re
 from urllib import parse
 from urllib import error, request
 
+from appwrite.client import Client
+from appwrite.services.storage import Storage
 from youtube_transcript_api import YouTubeTranscriptApi
 
 
@@ -26,6 +28,7 @@ OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions"
 
 MAX_LINK_BYTES = 25 * 1024 * 1024
 OCR_MODEL_DEFAULT = "google/gemini-2.0-flash-lite-001"
+_APPWRITE_STORAGE = None
 
 
 # ==============================
@@ -206,7 +209,7 @@ def extract_json_body(context):
     content_type = _get_header(headers, "content-type").lower()
 
     if "multipart/form-data" in content_type:
-        return _parse_multipart_body(context)
+        raise ValueError("multipart/form-data is not supported; use JSON body with Appwrite document IDs")
 
     if isinstance(getattr(context.req, "body_json", None), dict):
         return context.req.body_json
@@ -222,6 +225,84 @@ def extract_json_body(context):
         return json.loads(body)
 
     raise ValueError("Request body must be valid JSON")
+
+
+def _first_env(*names):
+    for name in names:
+        value = str(os.environ.get(name, "")).strip()
+        if value:
+            return value
+    return ""
+
+
+def _get_storage_bucket_id():
+    bucket_id = _first_env("APPWRITE_BUCKET_ID", "APPWRITE_STORAGE_BUCKET_ID")
+    if not bucket_id:
+        raise RuntimeError("Missing APPWRITE_BUCKET_ID environment variable")
+    return bucket_id
+
+
+def _get_appwrite_storage():
+    global _APPWRITE_STORAGE
+    if _APPWRITE_STORAGE is not None:
+        return _APPWRITE_STORAGE
+
+    endpoint = _first_env("APPWRITE_ENDPOINT", "APPWRITE_FUNCTION_API_ENDPOINT")
+    project_id = _first_env("APPWRITE_PROJECT_ID", "APPWRITE_FUNCTION_PROJECT_ID")
+    api_key = _first_env("APPWRITE_API_KEY", "APPWRITE_FUNCTION_API_KEY")
+
+    if not endpoint or not project_id or not api_key:
+        raise RuntimeError(
+            "Missing Appwrite configuration. Set APPWRITE_ENDPOINT, APPWRITE_PROJECT_ID, and APPWRITE_API_KEY"
+        )
+
+    client = Client()
+    client.set_endpoint(endpoint)
+    client.set_project(project_id)
+    client.set_key(api_key)
+    _APPWRITE_STORAGE = Storage(client)
+    return _APPWRITE_STORAGE
+
+
+def _fetch_appwrite_file_as_document(file_id):
+    cleaned_file_id = str(file_id or "").strip()
+    if not cleaned_file_id:
+        raise ValueError("Invalid Appwrite document id")
+
+    storage = _get_appwrite_storage()
+    bucket_id = _get_storage_bucket_id()
+
+    metadata = storage.get_file(bucket_id=bucket_id, file_id=cleaned_file_id)
+    file_bytes = storage.get_file_download(bucket_id=bucket_id, file_id=cleaned_file_id)
+
+    def _metadata_value(obj, *keys):
+        if isinstance(obj, dict):
+            for key in keys:
+                if key in obj and obj[key] is not None:
+                    return obj[key]
+            return None
+
+        for key in keys:
+            if hasattr(obj, key):
+                value = getattr(obj, key)
+                if value is not None:
+                    return value
+        return None
+
+    if hasattr(file_bytes, "read"):
+        file_bytes = file_bytes.read()
+    if isinstance(file_bytes, str):
+        file_bytes = file_bytes.encode("utf-8", errors="ignore")
+    if not isinstance(file_bytes, (bytes, bytearray)):
+        raise RuntimeError("Appwrite file download returned unsupported data type")
+
+    return {
+        "type": "file",
+        "name": str(_metadata_value(metadata, "name", "file_name") or cleaned_file_id),
+        "content": base64.b64encode(bytes(file_bytes)).decode("utf-8"),
+        "encoding": "base64",
+        "content_type": str(_metadata_value(metadata, "mimeType", "mime_type", "mime") or ""),
+    }
 
 
 # ==============================
@@ -484,12 +565,18 @@ def _normalize_documents(documents):
     if isinstance(documents, dict):
         files = documents.get("files", [])
         links = documents.get("links", [])
+        ids = documents.get("ids", [])
+        if not isinstance(ids, list):
+            ids = [ids]
 
         for item in links:
             if isinstance(item, str):
                 parsed_documents.append({"type": "link", "url": item})
             elif isinstance(item, dict):
                 parsed_documents.append({"type": "link", "url": item.get("url", "")})
+
+        for item in ids:
+            parsed_documents.append({"type": "appwrite_file_id", "id": str(item).strip()})
 
         for item in files:
             if isinstance(item, dict):
@@ -521,18 +608,12 @@ def _normalize_documents(documents):
                 if item.startswith("http://") or item.startswith("https://"):
                     parsed_documents.append({"type": "link", "url": item})
                 else:
-                    parsed_documents.append(
-                        {
-                            "type": "file",
-                            "name": "inline-text",
-                            "content": item,
-                            "encoding": "utf-8",
-                            "content_type": "",
-                        }
-                    )
+                    parsed_documents.append({"type": "appwrite_file_id", "id": item.strip()})
             elif isinstance(item, dict):
                 if item.get("url"):
                     parsed_documents.append({"type": "link", "url": item.get("url")})
+                elif item.get("id"):
+                    parsed_documents.append({"type": "appwrite_file_id", "id": str(item.get("id")).strip()})
                 else:
                     parsed_documents.append(
                         {
@@ -617,6 +698,19 @@ def prepare_document_context(context, documents):
             except (RuntimeError, ValueError, error.URLError, error.HTTPError, TimeoutError) as fetch_err:
                 context.error(f"Unable to fetch link '{url}': {repr(fetch_err)}")
                 chunk = f"[LINK] {url}\\nFailed to fetch this link."
+        elif item["type"] == "appwrite_file_id":
+            file_id = str(item.get("id", "")).strip()
+            if not file_id:
+                continue
+            try:
+                storage_file_item = _fetch_appwrite_file_as_document(file_id)
+                name = storage_file_item.get("name", file_id)
+                raw_text = _extract_text_from_file(storage_file_item, context)
+                snippet = raw_text[:max_item_chars]
+                chunk = f"[FILE] {name}\\n{snippet}"
+            except Exception as fetch_err:
+                context.error(f"Unable to fetch Appwrite file '{file_id}': {repr(fetch_err)}")
+                chunk = f"[FILE] {file_id}\\nFailed to fetch this file from Appwrite Storage."
         else:
             name = item.get("name", "unnamed")
             raw_text = _extract_text_from_file(item, context)

@@ -1,32 +1,51 @@
-# 📝 Quiz Generator Function
+# Quiz Generator Function
 
-An Appwrite function that intelligently generates quiz questions from various document sources including images, videos, PDFs, YouTube videos, and text. The function extracts semantic content and generates structurally sound quizzes with customizable difficulty and size.
+This Appwrite function generates multiple-choice quizzes from source material. It accepts a JSON body and fetches files from Appwrite Storage using file IDs.
 
-## 🧰 Usage
+## What It Does
 
-### POST / (Quiz Generation)
+- Accepts quiz settings (`difficulty`, `size`, `quiz_summary`)
+- Accepts source references via:
+  - Appwrite Storage file IDs
+  - optional web links
+- Downloads files from your bucket and extracts content from:
+  - PDFs
+  - Images (Gemini OCR)
+  - Videos (Gemini OCR)
+  - Plain text files
+  - YouTube links (transcripts)
+- Sends consolidated context to the LLM and returns quiz JSON
 
-Generates a quiz from provided documents.
+## Request Format
 
-**Request Example (cURL)**
+This function no longer accepts multipart form-data. Use JSON body only.
 
-```bash
-curl -X POST https://your-appwrite-function-url \
-  -F "difficulty=medium" \
-  -F "size=small" \
-  -F "quiz_summary=Optional context or instructions" \
-  -F "links=https://example.com" \
-  -F "file=@/path/to/document.pdf"
+### Body Example (Minimal)
+
+```json
+{
+  "difficulty": "medium",
+  "size": "small",
+  "quiz_summary": "Cell biology basics",
+  "documents": ["FILE_ID_1", "FILE_ID_2"]
+}
 ```
 
-**Form Fields**:
-- `difficulty` (required): `easy`, `medium`, or `hard`
-- `size` (required): `small`, `medium`, or `large`
-- `quiz_summary` (optional): Context or specific instructions for quiz generation
-- `links` (optional): URLs to fetch content from (can be repeated with multiple `-F` flags)
-- `file` (optional): Files to process (images, videos, PDFs, text) - can be repeated with multiple `-F` flags
+### Body Example (With Links + IDs)
 
-**Response**
+```json
+{
+  "difficulty": "hard",
+  "size": "medium",
+  "quiz_summary": "Focus on mechanisms and definitions",
+  "documents": {
+    "ids": ["FILE_ID_1", "FILE_ID_2"],
+    "links": ["https://en.wikipedia.org/wiki/Cell_(biology)"]
+  }
+}
+```
+
+## Response
 
 ```json
 {
@@ -40,52 +59,32 @@ curl -X POST https://your-appwrite-function-url \
         "question": "What is the primary function of mitochondria?",
         "options": ["Energy production", "Protein synthesis", "DNA replication", "Waste disposal"],
         "correct_answer": 0,
-        "explanation": "Mitochondria are often called the powerhouse of the cell because they produce ATP through cellular respiration."
-      },
-      {
-        "type": "multiple_choice",
-        "question": "Which organelle contains the cell's genetic material?",
-        "options": ["Mitochondria", "Nucleus", "Ribosome", "Golgi apparatus"],
-        "correct_answer": 1,
-        "explanation": "The nucleus contains DNA and controls all cellular activities through gene regulation."
+        "explanation": "Mitochondria produce ATP through cellular respiration."
       }
     ]
   }
 }
 ```
 
-**Response Fields**:
-- `suggested_name`: Recommended quiz title based on content
-- `suggested_subject`: Inferred subject matter from documents
-- `difficulty`: The difficulty level requested (`easy`, `medium`, `hard`)
-- `questions`: Array of multiple-choice questions with:
-  - `type`: Always `"multiple_choice"`
-  - `question`: The quiz question
-  - `options`: Array of 4 answer options
-  - `correct_answer`: Index of the correct option (0-3)
-  - `explanation`: Explanation of the correct answer
+## Configuration
 
-## Supported Document Types
+| Setting | Value |
+| --- | --- |
+| Runtime | Python (3.9+) |
+| Entrypoint | `main.py` |
+| Build Command | `pip install -r requirements.txt` |
+| Timeout | 60 seconds |
 
-- **Images**: Encodes image bytes and extracts text using Gemini OCR
-- **Videos**: Encodes video bytes and extracts text using Gemini OCR
-- **PDFs**: Extracts text while ignoring structural artifacts
-- **YouTube**: Fetches video transcripts
-- **Text**: Processes plain text directly
-- **URLs**: Fetches and processes web page content
+## Required Environment Variables
 
-## ⚙️ Configuration
+- `OPENROUTER_API_KEY`: OpenRouter API key
+- `APPWRITE_ENDPOINT` or `APPWRITE_FUNCTION_API_ENDPOINT`: Appwrite endpoint
+- `APPWRITE_PROJECT_ID` or `APPWRITE_FUNCTION_PROJECT_ID`: Appwrite project ID
+- `APPWRITE_API_KEY` or `APPWRITE_FUNCTION_API_KEY`: Appwrite API key with Storage read access
+- `APPWRITE_BUCKET_ID` or `APPWRITE_STORAGE_BUCKET_ID`: Bucket containing source files
 
-| Setting           | Value                             |
-| ----------------- | --------------------------------- |
-| Runtime           | Python (3.9+)                    |
-| Entrypoint        | `main.py`                        |
-| Build Commands    | `pip install -r requirements.txt` |
-| Permissions       | `any`                             |
-| Timeout (Seconds) | 60                                |
+## Optional Environment Variables
 
-## 🔒 Environment Variables
+- `OPENROUTER_MODEL`: Quiz generation model (default: `z-ai/glm-4.5-air:free`)
+- `OCR_MODEL`: OCR vision model (default: `google/gemini-2.0-flash-lite-001`)
 
-- `OPENROUTER_API_KEY` (required) - API key for OpenRouter LLM service
-- `OPENROUTER_MODEL` (optional) - LLM model to use (defaults to `z-ai/glm-4.5-air:free`)
-- `OCR_MODEL` (optional) - OCR vision model (defaults to `google/gemini-2.0-flash-lite-001`)
