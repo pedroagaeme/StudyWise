@@ -3,6 +3,8 @@ import io
 import json
 import os
 import re
+import time
+import uuid
 from urllib import parse
 from urllib import error, request
 
@@ -29,6 +31,21 @@ OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions"
 MAX_LINK_BYTES = 25 * 1024 * 1024
 OCR_MODEL_DEFAULT = "google/gemini-2.0-flash-lite-001"
 _APPWRITE_STORAGE = None
+
+
+def _ctx_log(context, message):
+    line = f"[generate_quiz] {message}"
+    try:
+        if context is not None and hasattr(context, "log"):
+            context.log(line)
+            return
+    except Exception:
+        pass
+
+    try:
+        print(line)
+    except Exception:
+        pass
 
 
 # ==============================
@@ -272,8 +289,15 @@ def _fetch_appwrite_file_as_document(file_id):
     storage = _get_appwrite_storage()
     bucket_id = _get_storage_bucket_id()
 
+    _ctx_log(None, f"[storage] start file_id={cleaned_file_id} bucket_id={bucket_id}")
+    t_meta = time.time()
+
     metadata = storage.get_file(bucket_id=bucket_id, file_id=cleaned_file_id)
+    _ctx_log(None, f"[storage] metadata_ok file_id={cleaned_file_id} elapsed={time.time() - t_meta:.2f}s")
+
+    t_download = time.time()
     file_bytes = storage.get_file_download(bucket_id=bucket_id, file_id=cleaned_file_id)
+    _ctx_log(None, f"[storage] download_ok file_id={cleaned_file_id} elapsed={time.time() - t_download:.2f}s")
 
     def _metadata_value(obj, *keys):
         if isinstance(obj, dict):
@@ -295,6 +319,8 @@ def _fetch_appwrite_file_as_document(file_id):
         file_bytes = file_bytes.encode("utf-8", errors="ignore")
     if not isinstance(file_bytes, (bytes, bytearray)):
         raise RuntimeError("Appwrite file download returned unsupported data type")
+
+    _ctx_log(None, f"[storage] bytes_ready file_id={cleaned_file_id} bytes={len(file_bytes)}")
 
     return {
         "type": "file",
@@ -419,6 +445,14 @@ def _call_gemini_ocr(media_bytes, mime_type, media_kind="image"):
         "temperature": 0,
     }
 
+    _ctx_log(
+        None,
+        (
+            f"[ocr] start kind={media_kind} mime={safe_mime} bytes={len(media_bytes)} "
+            f"model={payload['model']}"
+        ),
+    )
+
     req = request.Request(
         OPENROUTER_ENDPOINT,
         method="POST",
@@ -430,20 +464,25 @@ def _call_gemini_ocr(media_bytes, mime_type, media_kind="image"):
     req.add_unredirected_header("Authorization", f"Bearer {api_key}")
 
     try:
+        t_ocr = time.time()
         with request.urlopen(req, timeout=45) as response:
             raw = response.read().decode("utf-8", errors="ignore")
             parsed = json.loads(raw)
+        _ctx_log(None, f"[ocr] response_ok kind={media_kind} elapsed={time.time() - t_ocr:.2f}s")
     except (error.URLError, error.HTTPError, TimeoutError, json.JSONDecodeError) as err:
+        _ctx_log(None, f"[ocr] response_error kind={media_kind} error={repr(err)}")
         raise RuntimeError("OCR API request failed") from err
 
     choices = parsed.get("choices") if isinstance(parsed, dict) else None
     if not isinstance(choices, list) or not choices:
+        _ctx_log(None, f"[ocr] empty_choices kind={media_kind}")
         return ""
 
     message = choices[0].get("message") if isinstance(choices[0], dict) else {}
     content = message.get("content") if isinstance(message, dict) else ""
 
     if isinstance(content, str):
+        _ctx_log(None, f"[ocr] content_string kind={media_kind} chars={len(content.strip())}")
         return content.strip()
 
     if isinstance(content, list):
@@ -453,7 +492,9 @@ def _call_gemini_ocr(media_bytes, mime_type, media_kind="image"):
                 text = str(part.get("text", "")).strip()
                 if text:
                     parts.append(text)
-        return "\n".join(parts).strip()
+        merged = "\n".join(parts).strip()
+        _ctx_log(None, f"[ocr] content_list kind={media_kind} chars={len(merged)}")
+        return merged
 
     return ""
 
@@ -674,6 +715,7 @@ def _extract_text_from_file(item, context):
 
 def prepare_document_context(context, documents):
     normalized = _normalize_documents(documents)
+    _ctx_log(context, f"[docs] normalized_count={len(normalized)}")
     if not normalized:
         return "No external documents were provided.", False
 
@@ -686,13 +728,17 @@ def prepare_document_context(context, documents):
         if total_chars >= max_total_chars:
             break
 
+        _ctx_log(context, f"[docs] processing type={item.get('type')} total_chars={total_chars}")
+
         if item["type"] == "link":
             url = item.get("url", "").strip()
             if not url:
                 continue
 
             try:
+                _ctx_log(context, f"[docs] link_start url={url}")
                 link_text = _extract_text_from_link(url)
+                _ctx_log(context, f"[docs] link_ok url={url} chars={len(link_text)}")
                 snippet = link_text[:max_item_chars]
                 chunk = f"[LINK] {url}\\n{snippet}"
             except (RuntimeError, ValueError, error.URLError, error.HTTPError, TimeoutError) as fetch_err:
@@ -703,9 +749,11 @@ def prepare_document_context(context, documents):
             if not file_id:
                 continue
             try:
+                _ctx_log(context, f"[docs] storage_file_start id={file_id}")
                 storage_file_item = _fetch_appwrite_file_as_document(file_id)
                 name = storage_file_item.get("name", file_id)
                 raw_text = _extract_text_from_file(storage_file_item, context)
+                _ctx_log(context, f"[docs] storage_file_ok id={file_id} name={name} chars={len(raw_text)}")
                 snippet = raw_text[:max_item_chars]
                 chunk = f"[FILE] {name}\\n{snippet}"
             except Exception as fetch_err:
@@ -726,6 +774,7 @@ def prepare_document_context(context, documents):
 
     if not chunks:
         return "No readable content could be extracted from provided documents.", False
+    _ctx_log(context, f"[docs] done chunks={len(chunks)} total_chars={total_chars}")
     return "\\n\\n".join(chunks), True
 
 
@@ -785,7 +834,7 @@ def _read_http_error_body(http_error):
         return ""
 
 
-def call_openrouter(prompt):
+def call_openrouter(prompt, context=None):
     api_key = os.environ.get("OPENROUTER_API_KEY", "")
     api_key = api_key.strip().strip('"').strip("'")
     if not api_key:
@@ -807,18 +856,25 @@ def call_openrouter(prompt):
     req.add_header("X-Title", "StudyWise")
     req.add_unredirected_header("Authorization", f"Bearer {api_key}")
 
+    _ctx_log(context, f"[llm] start model={payload['model']} prompt_chars={len(prompt)}")
+
     try:
+        t_llm = time.time()
         with request.urlopen(req, timeout=30) as response:
             raw = response.read().decode("utf-8", errors="ignore")
             parsed = json.loads(raw)
             parsed["_resolved_model"] = payload["model"]
+            _ctx_log(context, f"[llm] response_ok elapsed={time.time() - t_llm:.2f}s")
             return parsed
     except error.HTTPError as http_err:
         details = _read_http_error_body(http_err)
+        _ctx_log(context, f"[llm] response_http_error code={http_err.code}")
         raise RuntimeError(f"OpenRouter API HTTP {http_err.code}. {details}")
     except error.URLError as url_err:
+        _ctx_log(context, f"[llm] response_network_error error={repr(url_err)}")
         raise RuntimeError(f"OpenRouter API network error: {repr(url_err)}")
     except TimeoutError as timeout_err:
+        _ctx_log(context, f"[llm] response_timeout error={repr(timeout_err)}")
         raise RuntimeError(f"OpenRouter API timeout: {repr(timeout_err)}")
 
 
@@ -882,6 +938,9 @@ def parse_quiz(generated_text):
 # ==============================
 
 def main(context):
+    request_id = str(uuid.uuid4())[:8]
+    _ctx_log(context, f"[{request_id}] request_start")
+
     try:
         body = extract_json_body(context)
     except (ValueError, json.JSONDecodeError) as err:
@@ -892,6 +951,14 @@ def main(context):
     quiz_summary = str(body.get("quiz_summary", "")).strip()
     documents = body.get("documents")
 
+    _ctx_log(
+        context,
+        (
+            f"[{request_id}] body_ok difficulty={difficulty} size={size} "
+            f"summary_chars={len(quiz_summary)}"
+        ),
+    )
+
     if difficulty not in ALLOWED_DIFFICULTY:
         return json_error(context, 400, "difficulty must be one of: easy, medium, hard")
     if size not in ALLOWED_SIZE:
@@ -899,17 +966,28 @@ def main(context):
     if not quiz_summary:
         return json_error(context, 400, "quiz_summary is required")
 
+    _ctx_log(context, f"[{request_id}] prepare_docs_start")
     documents_context, has_source_material = prepare_document_context(context, documents)
+    _ctx_log(
+        context,
+        (
+            f"[{request_id}] prepare_docs_ok has_source={has_source_material} "
+            f"context_chars={len(documents_context)}"
+        ),
+    )
     prompt = build_prompt(difficulty, size, quiz_summary, documents_context, has_source_material)
+    _ctx_log(context, f"[{request_id}] prompt_built chars={len(prompt)}")
 
     try:
-        llm_response = call_openrouter(prompt)
+        llm_response = call_openrouter(prompt, context=context)
         generated_text = extract_model_text(llm_response)
+        _ctx_log(context, f"[{request_id}] model_text_ok chars={len(generated_text)}")
 
         if not generated_text:
             return json_error(context, 502, "OpenRouter returned an empty response")
 
         quiz = parse_quiz(generated_text)
+        _ctx_log(context, f"[{request_id}] response_success")
         return context.res.json({"quiz": quiz})
     except RuntimeError as runtime_err:
         context.error(f"OpenRouter request failed: {repr(runtime_err)}")
