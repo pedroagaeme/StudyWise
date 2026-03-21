@@ -1,11 +1,11 @@
 import json
 
-from appwrite.src.generate_quiz.config import ALLOWED_DIFFICULTY, ALLOWED_SIZE
-from appwrite.src.generate_quiz.document_parser import prepare_document_context
-from appwrite.src.generate_quiz.openrouter_client import call_openrouter, extract_model_text
-from appwrite.src.generate_quiz.prompt_builder import build_prompt
-from appwrite.src.generate_quiz.quiz_parser import parse_quiz
-from appwrite.src.generate_quiz.request_utils import extract_json_body, json_error
+from config import ALLOWED_DIFFICULTY, ALLOWED_SIZE
+from document_parser import prepare_document_context
+from openrouter_client import call_openrouter, extract_model_text
+from prompt_builder import build_prompt
+from quiz_parser import parse_quiz
+from request_utils import extract_json_body, json_error
 
 
 # This Appwrite function will be executed every time your function is triggered

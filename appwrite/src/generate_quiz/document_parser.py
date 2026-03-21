@@ -8,7 +8,7 @@ from urllib import error, request
 
 from youtube_transcript_api import YouTubeTranscriptApi
 
-from appwrite.src.generate_quiz.config import MAX_LINK_BYTES, OPENROUTER_ENDPOINT
+from config import MAX_LINK_BYTES, OPENROUTER_ENDPOINT
 
 _OCR_MODEL = "google/gemini-2.0-flash-lite-001"
 

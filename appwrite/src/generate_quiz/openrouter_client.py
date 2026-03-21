@@ -2,7 +2,7 @@ import json
 import os
 from urllib import error, request
 
-from appwrite.src.generate_quiz.config import DEFAULT_OPENROUTER_MODEL, OPENROUTER_ENDPOINT
+from config import DEFAULT_OPENROUTER_MODEL, OPENROUTER_ENDPOINT
 
 
 def _normalize_openrouter_model(raw_model):

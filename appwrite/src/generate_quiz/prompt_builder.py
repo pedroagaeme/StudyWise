@@ -1,4 +1,4 @@
-from appwrite.src.generate_quiz.config import SIZE_TO_COUNT_RANGE
+from config import SIZE_TO_COUNT_RANGE
 
 
 def build_prompt(difficulty, size, quiz_summary, documents_context, has_source_material):

@@ -79,7 +79,7 @@ curl -X POST https://your-appwrite-function-url \
 | Setting           | Value                             |
 | ----------------- | --------------------------------- |
 | Runtime           | Python (3.9+)                    |
-| Entrypoint        | `src/generate_quiz/main.py`      |
+| Entrypoint        | `main.py`                        |
 | Build Commands    | `pip install -r requirements.txt` |
 | Permissions       | `any`                             |
 | Timeout (Seconds) | 60                                |
