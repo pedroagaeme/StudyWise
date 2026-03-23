@@ -2,28 +2,30 @@ package com.example.studywise
 
 import android.content.Context
 import com.example.studywise.constants.*
+import com.example.studywise.data.*
 import io.appwrite.Client
 import io.appwrite.ID
 import io.appwrite.Permission
-import io.appwrite.Query
 import io.appwrite.Role
 import io.appwrite.models.*
 import io.appwrite.services.*
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.json.Json
+import java.io.File
+import kotlin.collections.listOf
+import kotlin.time.Duration.Companion.seconds
 
 object Appwrite {
-    data class CreateAnswerOptionInput(
-        val text: String,
-        val isCorrect: Boolean
-    )
 
-    data class CreateQuestionInput(
-        val description: String,
-        val answerOptions: List<CreateAnswerOptionInput>
-    )
-
+    private const val POLL_INTERVAL_MS = 1000L
+    private val EXECUTION_TIMEOUT = 90.seconds
+    private val TERMINAL_STATUSES = setOf("completed", "failed", "cancelled")
     lateinit var client: Client
     lateinit var account: Account
     lateinit var databases: Databases
+    lateinit var functions: Functions
+    lateinit var storage: Storage
 
     fun init(context: Context) {
         client = Client(context)
@@ -32,6 +34,8 @@ object Appwrite {
 
         account = Account(client)
         databases = Databases(client)
+        functions = Functions(client)
+        storage = Storage(client)
     }
 
     // --- Authentication ---
@@ -70,118 +74,25 @@ object Appwrite {
         return account.updateVerification(userId, secret)
     }
 
-    // --- Quiz Operations ---
-
-    suspend fun getQuizWithDetails(quizId: String): Document<Map<String, Any>> {
-        return databases.getDocument(
-            databaseId = APPWRITE_DATABASE_ID,
-            collectionId = APPWRITE_QUIZ_TABLE_ID,
-            documentId = quizId,
-            queries = listOf(
-                Query.select(listOf("*", "questions.*", "questions.answer_options.*"))
-            )
-        )
-    }
-
-    suspend fun getQuizzes(
-        limit: Int = 25,
-        offset: Int = 0,
-        collectionId: String? = null
-    ): DocumentList<Map<String, Any>> {
-        val queries = mutableListOf(
-            Query.limit(limit),
-            Query.offset(offset),
-            Query.orderDesc("\$updatedAt")
-        )
-        
-        collectionId?.let {
-            queries.add(Query.equal(APPWRITE_FIELD_QUIZ_COLLECTION_ID, it))
-        }
-
-        return databases.listDocuments(
-            databaseId = APPWRITE_DATABASE_ID,
-            collectionId = APPWRITE_QUIZ_TABLE_ID,
-            queries = queries
-        )
-    }
-
-    suspend fun createQuiz(
-        userId: String,
-        title: String,
-        collectionId: String? = null,
-        questions: List<CreateQuestionInput> = emptyList()
-    ): Document<Map<String, Any>> {
-        val data = mutableMapOf<String, Any?>(
-            APPWRITE_FIELD_TITLE to title,
-            APPWRITE_FIELD_QUIZ_COLLECTION_ID to collectionId
-        )
-
-        val ownerPermissions = listOf(
-            Permission.read(Role.user(userId)),
-            Permission.update(Role.user(userId)),
-            Permission.delete(Role.user(userId)),
-        )
-
-        val quizDocument = databases.createDocument(
+    suspend fun uploadQuiz(quiz: QuizData): String {
+        val uploadedQuiz = databases.createDocument(
             databaseId = APPWRITE_DATABASE_ID,
             collectionId = APPWRITE_QUIZ_TABLE_ID,
             documentId = ID.unique(),
-            data = data,
-            permissions = ownerPermissions
-        )
-
-        // Build related documents first, then connect them through parent-side relation fields.
-        val createdQuestionIds = mutableListOf<String>()
-
-        questions.forEach { question ->
-            val questionDocument = databases.createDocument(
-                databaseId = APPWRITE_DATABASE_ID,
-                collectionId = APPWRITE_QUESTION_TABLE_ID,
-                documentId = ID.unique(),
-                data = mapOf(
-                    APPWRITE_FIELD_DESCRIPTION to question.description
-                ),
-                permissions = ownerPermissions
+            data = quiz,
+            permissions = listOf(
+                Permission.read(Role.user(getCurrentUser().id)),
+                Permission.delete(Role.user(getCurrentUser().id))
             )
+        )
+        return uploadedQuiz.id
+    }
 
-            val createdAnswerOptionIds = mutableListOf<String>()
-
-            question.answerOptions.forEach { answerOption ->
-                val answerOptionDocument = databases.createDocument(
-                    databaseId = APPWRITE_DATABASE_ID,
-                    collectionId = APPWRITE_ANSWER_TABLE_ID,
-                    documentId = ID.unique(),
-                    data = mapOf(
-                        APPWRITE_FIELD_TEXT to answerOption.text,
-                        APPWRITE_FIELD_IS_CORRECT to answerOption.isCorrect
-                    ),
-                    permissions = ownerPermissions
-                )
-
-                createdAnswerOptionIds.add(answerOptionDocument.id)
-            }
-
-            if (createdAnswerOptionIds.isNotEmpty()) {
-                databases.updateDocument(
-                    databaseId = APPWRITE_DATABASE_ID,
-                    collectionId = APPWRITE_QUESTION_TABLE_ID,
-                    documentId = questionDocument.id,
-                    data = mapOf(APPWRITE_FIELD_ANSWER_OPTIONS to createdAnswerOptionIds)
-                )
-            }
-
-            createdQuestionIds.add(questionDocument.id)
-        }
-
-        if (createdQuestionIds.isEmpty()) {
-            return quizDocument
-        }
-
-        return databases.updateDocument(
+    suspend fun getQuizDetails(quizId: String): Document<Map<String, Any>> {
+        return databases.getDocument(
             databaseId = APPWRITE_DATABASE_ID,
             collectionId = APPWRITE_QUIZ_TABLE_ID,
-            documentId = quizDocument.id,
-            data = mapOf(APPWRITE_FIELD_QUESTIONS to createdQuestionIds)
+            documentId = quizId
         )
     }
 
@@ -193,49 +104,102 @@ object Appwrite {
         )
     }
 
-    // --- Attempts ---
-
-    suspend fun getQuizAttempts(quizId: String): DocumentList<Map<String, Any>> {
-        return databases.listDocuments(
-            databaseId = APPWRITE_DATABASE_ID,
-            collectionId = APPWRITE_QUIZ_ATTEMPT_TABLE_ID,
-            queries = listOf(
-                Query.equal(APPWRITE_FIELD_QUIZ_ID, quizId),
-                Query.orderDesc("\$createdAt")
+    suspend fun uploadFilesToBucket(
+        files: List<File>,
+        bucketId: String = APPWRITE_FILES_BUCKET_ID
+    ): List<String> {
+        return files.map { file ->
+            val uploadedFile = storage.createFile(
+                bucketId = bucketId,
+                fileId = ID.unique(),
+                file = InputFile.fromFile(file)
             )
-        )
+            uploadedFile.id
+        }
     }
 
-    suspend fun createQuizAttempt(
-        userId: String,
-        quizId: String
-    ): Document<Map<String, Any>> {
-        return databases.createDocument(
-            databaseId = APPWRITE_DATABASE_ID,
-            collectionId = APPWRITE_QUIZ_ATTEMPT_TABLE_ID,
-            documentId = ID.unique(),
-            data = mapOf(APPWRITE_FIELD_QUIZ_ID to quizId),
-            permissions = listOf(
-                Permission.read(Role.user(userId)),
-                Permission.delete(Role.user(userId))
+    suspend fun generateQuiz(
+        difficulty: String,
+        size: String,
+        quizSummary: String? = null,
+        files: List<File> = emptyList(),
+        links: List<String> = emptyList(),
+        functionId: String = APPWRITE_GENERATE_QUIZ_FUNCTION_ID
+    ): GenerateQuizResponse {
+        val normalizedDifficulty = difficulty.trim().lowercase()
+        val normalizedSize = size.trim().lowercase()
+
+        require(normalizedDifficulty in setOf("easy", "medium", "hard")) {
+            "difficulty must be one of: easy, medium, hard"
+        }
+        require(normalizedSize in setOf("small", "medium", "large")) {
+            "size must be one of: small, medium, large"
+        }
+
+        // Upload files to storage and get their IDs
+        val uploadedFileIds = if (files.isNotEmpty()) {
+            uploadFilesToBucket(files)
+        } else {
+            emptyList()
+        }
+
+        val documents = if (uploadedFileIds.isNotEmpty() || links.isNotEmpty()) {
+            GenerateQuizDocuments(
+                ids = uploadedFileIds.takeIf { it.isNotEmpty() },
+                links = links.takeIf { it.isNotEmpty() }
             )
+        } else {
+            null
+        }
+
+        val request = GenerateQuizRequest(
+            difficulty = normalizedDifficulty,
+            size = normalizedSize,
+            quizSummary = quizSummary?.trim()?.takeIf { it.isNotEmpty() },
+            documents = documents
         )
+
+        val json = Json { ignoreUnknownKeys = true }
+        val requestBody = json.encodeToString(GenerateQuizRequest.serializer(), request)
+
+        val created = functions.createExecution(
+            functionId = functionId,
+            body = requestBody,
+            async = true
+        )
+
+        val finalExecution = withTimeout(EXECUTION_TIMEOUT) {
+            var latest = created
+            while (latest.status.lowercase() !in TERMINAL_STATUSES) {
+                delay(POLL_INTERVAL_MS)
+                latest = functions.getExecution(functionId, latest.id)
+            }
+            latest
+        }
+
+        val finalStatus = finalExecution.status.lowercase()
+        val body = finalExecution.responseBody.orEmpty()
+
+        if (finalStatus != "completed") {
+            throw Exception(
+                "Quiz generation failed. status=$finalStatus, code=${finalExecution.responseStatusCode}, body=$body"
+            )
+        }
+
+
+        if (body.isBlank()) {
+            throw Exception(
+                "Quiz generation completed but returned empty body. executionId=${finalExecution.id}"
+            )
+        }
+
+        return try {
+            json.decodeFromString(GenerateQuizResponse.serializer(), body)
+        } catch (e: Exception) {
+            throw Exception("Failed to parse quiz response: ${e.message}")
+        }
     }
 
-    suspend fun deleteQuizAttempt(attemptId: String) {
-        databases.deleteDocument(
-            databaseId = APPWRITE_DATABASE_ID,
-            collectionId = APPWRITE_QUIZ_ATTEMPT_TABLE_ID,
-            documentId = attemptId
-        )
-    }
 
-    // --- Collections ---
 
-    suspend fun getCollections(): DocumentList<Map<String, Any>> {
-        return databases.listDocuments(
-            databaseId = APPWRITE_DATABASE_ID,
-            collectionId = APPWRITE_QUIZ_COLLECTION_TABLE_ID
-        )
-    }
 }

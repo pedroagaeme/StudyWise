@@ -1,5 +1,7 @@
 package com.example.studywise.ui.tabs.create
 
+import android.net.Uri
+
 const val MAX_ATTACHMENTS = 3
 
 enum class QuizSize(val label: String) {
@@ -21,13 +23,14 @@ enum class AttachmentType {
 
 data class AttachmentPreview(
     val type: AttachmentType,
-    val value: String
+    val name: String,
+    val uri: Uri
 )
 
 data class CreateQuizUiState(
     val quizSize: QuizSize = QuizSize.MEDIUM,
     val quizDifficulty: QuizDifficulty = QuizDifficulty.MEDIUM,
-    val quizContent: String = "",
+    val quizSummary: String = "",
     val attachments: List<AttachmentPreview> = emptyList()
 )
 

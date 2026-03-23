@@ -15,5 +15,5 @@ interface QuizDao {
 
     @Transaction
     @Query("SELECT * FROM quiz WHERE id = :id")
-    suspend fun getQuizWithQuestionsById(id: String): QuizWithQuestions
+    suspend fun getQuizWithQuestionsById(id: String): QuizWithQuestions?
 }

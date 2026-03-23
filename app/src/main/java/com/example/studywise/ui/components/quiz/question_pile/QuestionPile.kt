@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.TransformOrigin
@@ -17,7 +18,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import androidx.compose.ui.zIndex
-import com.example.studywise.ui.components.quiz.question_pile.question_card.answer.AnswerUiState
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.studywise.data.db.StudyWiseDatabase
+import com.example.studywise.data.repository.QuizRepository
 import com.example.studywise.ui.components.custom_progress_indicators.CustomLinearProgressIndicator
 import com.example.studywise.ui.components.quiz.question_pile.question_card.QuestionCard
 import com.example.studywise.ui.components.quiz.question_pile.question_card.QuestionCardUiState
@@ -27,6 +30,7 @@ import com.example.studywise.ui.theme.LogoGreen
 import com.example.studywise.ui.theme.LogoOrange
 import com.example.studywise.ui.theme.LogoPink
 import com.example.studywise.ui.theme.LogoTeal
+import com.example.studywise.viewmodels.QuestionPileViewModel
 import kotlin.math.min
 
 // Since we want to simulate the feeling of a pile of cards,
@@ -85,15 +89,16 @@ object StackPositions {
 fun QuestionPile(
     state: QuestionPileUiState,
     onAction: (QuestionPileAction) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     // Calculate the values for the progress bar
     val questionCount = state.questionList.count()
-    val currentQuestionNumber = min(state.targetIndex + 1, questionCount)
+    val currentQuestionNumber = if (questionCount == 0) 0 else min(state.targetIndex + 1, questionCount)
     val paddedQuestionCount = questionCount.toString().padStart(2, '0')
     val paddedQuestionNumber = currentQuestionNumber.toString().padStart(2, '0')
 
     val progress by animateFloatAsState(
-        targetValue = currentQuestionNumber.toFloat() / questionCount,
+        targetValue = if (questionCount == 0) 0f else currentQuestionNumber.toFloat() / questionCount,
         animationSpec = tween(600)
     )
 
@@ -103,7 +108,7 @@ fun QuestionPile(
         targetValue = state.targetIndex.toFloat(),
         animationSpec = tween(600)
     )
-    Column() {
+    Column(modifier = modifier) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -188,68 +193,13 @@ fun CardInPile(
 @Composable
 fun QuestionPilePreview() {
 
-    var targetIndex by remember { mutableIntStateOf(0) }
-
-    val sampleQuestions = remember { mutableStateListOf<QuestionCardUiState>(
-            QuestionCardUiState(description = "Qual a capital da França?",
-                answers = listOf(
-                    AnswerUiState(text = "Paris", id = "1", isCorrect = true),
-                    AnswerUiState(text = "Londres", id = "2", isCorrect = false)
-                )
-            ),
-            QuestionCardUiState(description = "Qual a capital da França?",
-                answers = listOf(
-                    AnswerUiState(text = "Paris", id = "1", isCorrect = true),
-                    AnswerUiState(text = "Londres", id = "2", isCorrect = false)
-                )
-            ),
-            QuestionCardUiState(description = "Qual a capital da França?",
-                answers = listOf(
-                    AnswerUiState(text = "Paris", id = "1", isCorrect = true),
-                    AnswerUiState(text = "Londres", id = "2", isCorrect = false)
-                )
-            ),
-            QuestionCardUiState(description = "Qual a capital da França?",
-                answers = listOf(
-                    AnswerUiState(text = "Paris", id = "1", isCorrect = true),
-                    AnswerUiState(text = "Londres", id = "2", isCorrect = false)
-                )
-            ),
-            QuestionCardUiState(description = "Qual a capital da França?",
-                answers = listOf(
-                    AnswerUiState(text = "Paris", id = "1", isCorrect = true),
-                    AnswerUiState(text = "Londres", id = "2", isCorrect = false)
-                )
-            ),
-            QuestionCardUiState(description = "Qual a capital da França?",
-                answers = listOf(
-                    AnswerUiState(text = "Paris", id = "1", isCorrect = true),
-                    AnswerUiState(text = "Londres", id = "2", isCorrect = false)
-                )
-            ),
-    )
-    }
-
-    fun onAction(action: QuestionPileAction) {
-        when(action) {
-            is QuestionPileAction.AnswerSelected -> {
-                sampleQuestions[action.questionIndex] = sampleQuestions[action.questionIndex].copy(selectedAnswer = action.answer)
-            }
-            is QuestionPileAction.NextQuestionCardRequested -> {
-                targetIndex = action.questionIndex + 1
-            }
-            else -> {}
-        }
-    }
-
-
     AppTheme() {
         Box (
             modifier = Modifier
                 .background(MaterialTheme.colorScheme.background)
                 .padding(32.dp)
         ){
-            QuestionPile(QuestionPileUiState(questionList = sampleQuestions, targetIndex), ::onAction )
+
         }
     }
 }

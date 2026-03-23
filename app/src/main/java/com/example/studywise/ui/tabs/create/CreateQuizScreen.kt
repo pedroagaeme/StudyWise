@@ -1,5 +1,7 @@
 package com.example.studywise.ui.tabs.create
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -9,58 +11,71 @@ import androidx.compose.material.icons.rounded.AttachFile
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntSize
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.studywise.ui.theme.AppTheme
+import com.example.studywise.utils.ObserveAsEvents
+import com.example.studywise.viewmodels.CreateQuizScreenViewModel
 
-private const val MAX_ATTACHMENTS = 3
-
-private enum class QuizSize(val label: String) {
-    SMALL("Small"),
-    MEDIUM("Medium"),
-    LARGE("Large")
-}
-
-private enum class QuizDifficulty(val label: String) {
-    EASY("Easy"),
-    MEDIUM("Medium"),
-    HARD("Hard")
-}
-
-private enum class AttachmentType {
-    FILE,
-    LINK
-}
-
-private data class AttachmentPreview(
-    val type: AttachmentType,
-    val value: String
-)
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateQuizScreen(
-    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: CreateQuizScreenViewModel = hiltViewModel()
+) {
+    // Document picker launcher
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+        onResult = { uri ->
+            if(uri != null)
+                viewModel.onAction(CreateQuizScreenAction.OnAddAttachment(AttachmentType.FILE, uri))
+        }
+    )
+
+
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val onAction = viewModel::onAction
+
+    ObserveAsEvents(viewModel.events) { event ->
+        when (event) {
+            is CreateQuizScreenEvent.OpenFilePicker -> {
+                launcher.launch(
+                    arrayOf(
+                        "application/pdf",
+                        "image/*",
+                        "video/*"
+                    )
+                )
+            }
+        }
+    }
+
+    CreateQuizScreenContent(
+        state = state,
+        onAction = onAction,
+        modifier = modifier
+    )
+}
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CreateQuizScreenContent(
+    state: CreateQuizUiState,
+    onAction: (CreateQuizScreenAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var quizSize by remember { mutableStateOf(QuizSize.MEDIUM) }
-    var quizDifficulty by remember { mutableStateOf(QuizDifficulty.MEDIUM) }
-    var quizContent by remember { mutableStateOf("") }
-    val attachments = remember { mutableStateListOf<AttachmentPreview>() }
-
-    fun addAttachment(type: AttachmentType) {
-        if (attachments.size >= MAX_ATTACHMENTS) return
-        val sameTypeCount = attachments.count { it.type == type } + 1
-        val value = when (type) {
-            AttachmentType.FILE -> "file_$sameTypeCount.pdf"
-            AttachmentType.LINK -> "https://example.com/resource-$sameTypeCount"
-        }
-        attachments.add(AttachmentPreview(type = type, value = value))
-    }
+    val canAddMore = state.attachments.size < MAX_ATTACHMENTS
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
@@ -73,7 +88,7 @@ fun CreateQuizScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onDismiss) {
+                    IconButton(onClick = { onAction(CreateQuizScreenAction.OnDismiss) }) {
                         Icon(Icons.Rounded.Close, contentDescription = "Close")
                     }
                 },
@@ -102,9 +117,9 @@ fun CreateQuizScreen(
 
                 SelectorRow(
                     options = QuizSize.entries,
-                    selectedOption = quizSize,
+                    selectedOption = state.quizSize,
                     optionLabel = { it.label },
-                    onSelect = { quizSize = it }
+                    onSelect = { onAction(CreateQuizScreenAction.OnQuizScreenSizeChange(it)) }
                 )
 
                 Text(
@@ -114,9 +129,9 @@ fun CreateQuizScreen(
 
                 SelectorRow(
                     options = QuizDifficulty.entries,
-                    selectedOption = quizDifficulty,
+                    selectedOption = state.quizDifficulty,
                     optionLabel = { it.label },
-                    onSelect = { quizDifficulty = it }
+                    onSelect = { onAction(CreateQuizScreenAction.OnQuizScreenDifficultyChange(it)) }
                 )
 
                 Text(
@@ -125,8 +140,8 @@ fun CreateQuizScreen(
                 )
 
                 OutlinedTextField(
-                    value = quizContent,
-                    onValueChange = { quizContent = it },
+                    value = state.quizSummary,
+                    onValueChange = { onAction(CreateQuizScreenAction.OnQuizScreenSummaryChange(it)) },
                     placeholder = { Text("Paste your notes here or type a summary...") },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 3,
@@ -135,11 +150,11 @@ fun CreateQuizScreen(
                 )
 
                 Text(
-                    "Files and Links (${attachments.size}/$MAX_ATTACHMENTS)",
+                    "Files and Links (${state.attachments.size}/$MAX_ATTACHMENTS)",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                 )
 
-                if (attachments.isEmpty()) {
+                if (state.attachments.isEmpty()) {
                     Text(
                         "No attachments yet.",
                         style = MaterialTheme.typography.bodyMedium,
@@ -147,21 +162,19 @@ fun CreateQuizScreen(
                     )
                 }
 
-                attachments.forEachIndexed { index, item ->
+                state.attachments.forEach { item ->
                     AttachmentPreviewRow(
                         attachment = item,
-                        onRemove = { attachments.removeAt(index) }
+                        onRemove = { onAction(CreateQuizScreenAction.OnRemoveAttachment(item)) }
                     )
                 }
-
-                val canAddMore = attachments.size < MAX_ATTACHMENTS
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Button(
-                        onClick = { addAttachment(AttachmentType.FILE) },
+                        onClick = { onAction(CreateQuizScreenAction.OnFileButtonClick) },
                         enabled = canAddMore,
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp),
@@ -176,7 +189,7 @@ fun CreateQuizScreen(
                     }
 
                     Button(
-                        onClick = { addAttachment(AttachmentType.LINK) },
+                        onClick = { onAction(CreateQuizScreenAction.OnFileButtonClick) },
                         enabled = canAddMore,
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp),
@@ -201,7 +214,7 @@ fun CreateQuizScreen(
             }
 
             Button(
-                onClick = { /* Handle quiz generation */ },
+                onClick = { onAction(CreateQuizScreenAction.OnGenerateQuizButtonClick) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
@@ -253,7 +266,8 @@ private fun AttachmentPreviewRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 imageVector = if (attachment.type == AttachmentType.FILE) {
@@ -266,9 +280,10 @@ private fun AttachmentPreviewRow(
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = attachment.value,
+                    text = attachment.name,
                     style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.MiddleEllipsis
                 )
                 Text(
                     text = if (attachment.type == AttachmentType.FILE) "File" else "Link",
@@ -286,8 +301,25 @@ private fun AttachmentPreviewRow(
 @Preview(showBackground = true)
 @Composable
 fun CreateQuizScreenPreview() {
+    var state by remember { mutableStateOf(CreateQuizUiState()) }
     AppTheme {
-        CreateQuizScreen(onDismiss = {})
+        CreateQuizScreenContent(
+            state = state,
+            onAction = { action ->
+                state = when (action) {
+                    is CreateQuizScreenAction.OnQuizScreenDifficultyChange ->
+                        state.copy(quizDifficulty = action.quizDifficulty)
+
+                    is CreateQuizScreenAction.OnQuizScreenSizeChange ->
+                        state.copy(quizSize = action.quizSize)
+
+                    is CreateQuizScreenAction.OnQuizScreenSummaryChange ->
+                        state.copy(quizSummary = action.quizSummary)
+
+                    else -> state
+                }
+            }
+        )
     }
 }
 
