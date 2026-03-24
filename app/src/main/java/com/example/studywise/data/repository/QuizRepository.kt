@@ -1,25 +1,91 @@
 package com.example.studywise.data.repository
 
-import android.net.Uri
 import com.example.studywise.Appwrite
+import com.example.studywise.data.QuestionAnswerOptionData
+import com.example.studywise.data.QuizCollectionData
+import com.example.studywise.data.QuizData
+import com.example.studywise.data.QuizQuestionData
 import com.example.studywise.data.db.dao.QuizDao
-import com.example.studywise.data.db.relation.QuizWithQuestions
-import io.appwrite.models.InputFile
+import com.example.studywise.data.db.entity.AnswerOptionEntity
+import com.example.studywise.data.db.entity.QuestionEntity
+import com.example.studywise.data.db.entity.QuizCollectionEntity
+import com.example.studywise.data.db.entity.QuizEntity
 import java.io.File
+import java.time.Instant
+import java.util.UUID
 import javax.inject.Inject
 
 
 class QuizRepository @Inject constructor(
     private val quizDao: QuizDao
 ) {
-    suspend fun getQuizDetails(quizId: String): QuizWithQuestions {
-        val localResult = quizDao.getQuizWithQuestionsById(quizId)
-        if (localResult != null) {
-            return localResult
-        }
-        throw Exception("Quiz not found")
+
+    private suspend fun getQuizDetailsLocal(quizId: String): QuizData? {
+        val localResult = quizDao.getQuizWithQuestionsById(quizId) ?: return null
+        val collectionEntity = quizDao.getQuizCollectionByQuizId(quizId)?: return null
+        return QuizData(
+            title = localResult.quiz.title,
+            quizCollection = QuizCollectionData(
+                name = collectionEntity.name
+            ),
+            questions = localResult.questions.map { questionWithAnswers ->
+                QuizQuestionData(
+                    type = questionWithAnswers.question.type,
+                    description = questionWithAnswers.question.description,
+                    answerOptions = questionWithAnswers.answers.map { answer ->
+                        QuestionAnswerOptionData(
+                            text = answer.text,
+                            isCorrect = answer.isCorrect
+                        )
+                    },
+                    explanation = questionWithAnswers.question.explanation
+                )
+            }
+        )
     }
 
+    @Suppress("UNCHECKED_CAST")
+    private suspend fun getQuizDetailsRemote(quizId: String): QuizData? {
+        try {
+            val remoteResult = Appwrite.getQuizDetails(quizId).data
+
+            // Deserialize map to QuizData
+            return remoteResult.let {
+                QuizData(
+                    title = it["title"] as? String ?: return null,
+                    quizCollection = QuizCollectionData(
+                        name = (it["quizCollection"] as? Map<*, *>)?.get("name") as? String ?: return null
+                    ),
+                    questions = (it["questions"] as? List<Map<String, Any>>)?.mapNotNull { questionMap ->
+                        QuizQuestionData(
+                            type = questionMap["type"] as? String ?: return@mapNotNull null,
+                            description = questionMap["description"] as? String ?: return@mapNotNull null,
+                            answerOptions = (questionMap["answerOptions"] as? List<Map<String, Any>>)?.mapNotNull { answerMap ->
+                                QuestionAnswerOptionData(
+                                    text = answerMap["text"] as? String ?: return@mapNotNull null,
+                                    isCorrect = answerMap["isCorrect"] as? Boolean ?: false
+                                )
+                            } ?: emptyList(),
+                            explanation = questionMap["explanation"] as? String ?: ""
+                        )
+                    } ?: emptyList()
+                )
+            }
+        } catch (e: Exception) {
+            return null
+        }
+    }
+
+    suspend fun getQuizDetails(quizId: String): QuizData? {
+        val localQuiz = getQuizDetailsLocal(quizId)
+        if (localQuiz != null) return localQuiz
+
+        val remoteQuiz = getQuizDetailsRemote(quizId)
+        if (remoteQuiz != null) {
+            uploadQuizLocal(remoteQuiz)
+        }
+        return remoteQuiz
+    }
     suspend fun generateQuiz(
         difficulty: String,
         size: String,
@@ -33,4 +99,89 @@ class QuizRepository @Inject constructor(
         files = files,
         links = links
     )
+
+    private suspend fun uploadQuizLocal(quiz: QuizData): String? {
+        val quizCollectionEntity = quizCollectionDataToEntity(quiz.quizCollection)
+        val quizEntity = quizDataToEntity(quiz, quizCollectionEntity.id)
+
+        try {
+            quizDao.insertQuizWithQuestionsAndAnswers(
+                quizCollection = quizCollectionEntity,
+                quiz = quizEntity,
+                questions = quiz.questions.map { questionData ->
+                    val questionEntity = questionDataToEntity(questionData, quizEntity.id)
+                    val answers = questionData.answerOptions.map { answerData ->
+                        answerOptionDataToEntity(answerData, questionEntity.id)
+                    }
+                    Pair(questionEntity, answers)
+                }
+            )
+
+            return quizEntity.id
+        } catch (e: Exception) {
+            return null
+        }
+    }
+
+    private suspend fun uploadQuizRemote(quiz: QuizData): String? {
+        return try {
+            Appwrite.uploadQuiz(quiz)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    suspend fun uploadQuiz(quiz: QuizData): String? {
+        val localResultId = uploadQuizLocal(quiz)
+        val remoteResultId = uploadQuizRemote(quiz)
+        return remoteResultId ?: localResultId
+    }
+
+    private suspend fun quizCollectionDataToEntity(
+        data: QuizCollectionData
+    ): QuizCollectionEntity {
+        val quizCollectionId = UUID.randomUUID().toString()
+        val creationDate = Instant.now().toString()
+        return QuizCollectionEntity(
+            id = quizCollectionId,
+            name = data.name,
+            createdAt = creationDate,
+            updatedAt = creationDate
+        )
+    }
+    private suspend fun quizDataToEntity(data: QuizData, collectionId: String): QuizEntity {
+        val quizId = UUID.randomUUID().toString()
+        val creationDate = Instant.now().toString()
+        return QuizEntity(
+            id = quizId,
+            title = data.title,
+            quizCollectionId = collectionId,
+            createdAt = creationDate,
+            updatedAt = creationDate
+        )
+    }
+
+    private fun questionDataToEntity(data: QuizQuestionData, quizId: String): QuestionEntity {
+        return QuestionEntity(
+            id = UUID.randomUUID().toString(),
+            description = data.description,
+            type = data.type,
+            explanation = data.explanation,
+            quizId = quizId,
+            createdAt = Instant.now().toString(),
+            updatedAt = Instant.now().toString()
+        )
+    }
+
+    private fun answerOptionDataToEntity(data: QuestionAnswerOptionData, questionId: String):
+            AnswerOptionEntity {
+        return AnswerOptionEntity(
+            id = UUID.randomUUID().toString(),
+            text = data.text,
+            isCorrect = data.isCorrect,
+            questionId = questionId,
+            createdAt = Instant.now().toString(),
+            updatedAt = Instant.now().toString()
+        )
+    }
 }

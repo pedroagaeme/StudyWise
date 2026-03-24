@@ -7,12 +7,15 @@ import io.appwrite.Client
 import io.appwrite.ID
 import io.appwrite.Permission
 import io.appwrite.Role
+import io.appwrite.exceptions.AppwriteException
 import io.appwrite.models.*
 import io.appwrite.services.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.time.Instant
+import java.util.UUID
 import kotlin.collections.listOf
 import kotlin.time.Duration.Companion.seconds
 
@@ -64,6 +67,23 @@ object Appwrite {
 
     suspend fun getCurrentUser(): User<Map<String, Any>> {
         return account.get()
+    }
+
+    suspend fun getCurrentSessionOrNull(): Session? {
+        return try {
+            account.getSession("current")
+        } catch (e: AppwriteException) {
+            if (e.code == 401 || e.code == 404) null else throw e
+        }
+    }
+
+    suspend fun isSessionActive(): Boolean {
+        val session = getCurrentSessionOrNull() ?: return false
+        return try {
+            Instant.parse(session.expire).isAfter(Instant.now())
+        } catch (_: Exception) {
+            false
+        }
     }
 
     suspend fun sendVerification(url: String): Token {
@@ -118,6 +138,30 @@ object Appwrite {
         }
     }
 
+    suspend fun fetchQuizFromBucket(quizResponseFileName: String): GenerateQuizResponse {
+        val storage = Storage(client)
+        val bucketId = APPWRITE_QUIZ_RESPONSES_BUCKET_ID
+        val fileName = "$quizResponseFileName.json"
+
+        return try {
+            // 1. Download the file as a ByteArray
+            val responseBytes = storage.getFileDownload(
+                bucketId = bucketId,
+                fileId = fileName
+            )
+
+            // 2. Convert bytes to String
+            val jsonString = String(responseBytes, Charsets.UTF_8)
+
+            // 3. Parse JSON using kotlinx.serialization
+            val json = Json { ignoreUnknownKeys = true }
+            json.decodeFromString(GenerateQuizResponse.serializer(), jsonString)
+
+        } catch (e: Exception) {
+            throw Exception("Failed to download quiz data: ${e.message}")
+        }
+    }
+
     suspend fun generateQuiz(
         difficulty: String,
         size: String,
@@ -153,6 +197,7 @@ object Appwrite {
         }
 
         val request = GenerateQuizRequest(
+            quizResponseFileName = ID.unique(),
             difficulty = normalizedDifficulty,
             size = normalizedSize,
             quizSummary = quizSummary?.trim()?.takeIf { it.isNotEmpty() },
@@ -178,26 +223,14 @@ object Appwrite {
         }
 
         val finalStatus = finalExecution.status.lowercase()
-        val body = finalExecution.responseBody.orEmpty()
 
         if (finalStatus != "completed") {
             throw Exception(
-                "Quiz generation failed. status=$finalStatus, code=${finalExecution.responseStatusCode}, body=$body"
+                "Quiz generation failed. status=$finalStatus, code=${finalExecution.responseStatusCode}"
             )
         }
 
-
-        if (body.isBlank()) {
-            throw Exception(
-                "Quiz generation completed but returned empty body. executionId=${finalExecution.id}"
-            )
-        }
-
-        return try {
-            json.decodeFromString(GenerateQuizResponse.serializer(), body)
-        } catch (e: Exception) {
-            throw Exception("Failed to parse quiz response: ${e.message}")
-        }
+        return fetchQuizFromBucket(quizResponseFileName = request.quizResponseFileName)
     }
 
 

@@ -5,6 +5,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class GenerateQuizRequest(
+    @SerialName("quiz_response_file_name")
+    val quizResponseFileName: String,
     val difficulty: String,
     val size: String,
     @SerialName("quiz_summary")
@@ -33,7 +35,7 @@ data class QuizData(
 
 @Serializable
 data class QuizCollectionData(
-    val title: String
+    val name: String
 )
 @Serializable
 data class QuizQuestionData(
@@ -47,6 +49,7 @@ data class QuizQuestionData(
 @Serializable
 data class QuestionAnswerOptionData(
     val text: String,
+    @SerialName("is_correct")
     val isCorrect: Boolean
 )
 

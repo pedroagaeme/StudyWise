@@ -13,10 +13,11 @@ ksp = "2.0.21-1.0.28"
 googleFonts = "1.10.4"
 materialIconsExtended = "1.7.8"
 appwrite = "8.1.0"
-retrofit = "2.11.0"
-okhttp = "4.12.0"
 kotlinx-serialization = "1.6.1"
 hilt = "2.57.1"
+navigation3 = "1.0.0"
+lifecycleNavigation = "2.8.0"
+
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -44,6 +45,9 @@ kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hilt" }
 androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version = "1.2.0" }
+androidx-navigation3-runtime = { group = "androidx.navigation3", name = "navigation3-runtime", version.ref = "navigation3" }
+androidx-navigation3-ui = { group = "androidx.navigation3", name = "navigation3-ui", version.ref = "navigation3" }
+androidx-lifecycle-viewmodel-navigation3 = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-navigation3", version.ref = "lifecycleNavigation" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

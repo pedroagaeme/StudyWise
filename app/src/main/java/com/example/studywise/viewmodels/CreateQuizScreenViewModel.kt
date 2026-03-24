@@ -1,20 +1,17 @@
 package com.example.studywise.viewmodels
 
-import android.app.Application
 import android.content.Context
-import android.content.Intent
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.webkit.MimeTypeMap
-import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.studywise.data.repository.QuizRepository
-import com.example.studywise.ui.tabs.create.AttachmentPreview
-import com.example.studywise.ui.tabs.create.AttachmentType
-import com.example.studywise.ui.tabs.create.CreateQuizScreenAction
-import com.example.studywise.ui.tabs.create.CreateQuizScreenEvent
-import com.example.studywise.ui.tabs.create.CreateQuizUiState
+import com.example.studywise.ui.screens.create_quiz.AttachmentPreview
+import com.example.studywise.ui.screens.create_quiz.AttachmentType
+import com.example.studywise.ui.screens.create_quiz.CreateQuizScreenAction
+import com.example.studywise.ui.screens.create_quiz.CreateQuizScreenEvent
+import com.example.studywise.ui.screens.create_quiz.CreateQuizUiState
 import com.example.studywise.utils.uriToFile
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -42,6 +39,11 @@ class CreateQuizScreenViewModel @Inject constructor(
 
     fun onAction(action: CreateQuizScreenAction) {
         when (action) {
+            is CreateQuizScreenAction.OnDismiss -> {
+                viewModelScope.launch {
+                    eventChannel.send(CreateQuizScreenEvent.Dismiss)
+                }
+            }
             is CreateQuizScreenAction.OnGenerateQuizButtonClick -> {
                 generateQuiz()
             }
@@ -106,6 +108,9 @@ class CreateQuizScreenViewModel @Inject constructor(
                     .filter { it.type == AttachmentType.LINK }
                     .map { it.uri.toString() }
             )
+            val quizId = repository.uploadQuiz(result.quiz)
+            quizId?: return@launch
+            eventChannel.send(CreateQuizScreenEvent.QuizGenerated(quizId))
         }
     }
 

@@ -18,6 +18,8 @@ import androidx.room.Index
 data class QuestionEntity(
     @PrimaryKey val id: String,
     val description: String,
+    val type: String,
+    val explanation: String,
     val quizId: String,
     val createdAt: String,
     val updatedAt: String

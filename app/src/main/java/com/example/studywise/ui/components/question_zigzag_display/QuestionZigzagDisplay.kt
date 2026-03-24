@@ -15,9 +15,9 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.IntOffset
-import com.example.studywise.ui.components.quiz.question_pile.question_card.answer.AnswerUiState
-import com.example.studywise.ui.components.quiz.question_pile.question_card.QuestionCard
-import com.example.studywise.ui.components.quiz.question_pile.question_card.QuestionCardUiState
+import com.example.studywise.ui.screens.answer_quiz.components.question_pile.question_card.answer.AnswerUiState
+import com.example.studywise.ui.screens.answer_quiz.components.question_pile.question_card.QuestionCard
+import com.example.studywise.ui.screens.answer_quiz.components.question_pile.question_card.QuestionCardUiState
 import com.example.studywise.ui.theme.LogoGreen
 import com.example.studywise.ui.theme.LogoOrange
 import com.example.studywise.ui.theme.LogoPink
@@ -97,8 +97,8 @@ fun QuestionZigzagDisplay(
             state = QuestionCardUiState(
                 description = "Qual a capital da França?",
                 answers = listOf(
-                    AnswerUiState(text = "Paris", id = "1", isCorrect = true),
-                    AnswerUiState(text = "Londres", id = "2", isCorrect = false)
+                    AnswerUiState(text = "Paris", isCorrect = true),
+                    AnswerUiState(text = "Londres", isCorrect = false)
                 )
             ),
             cardIndex = 0,
@@ -109,8 +109,8 @@ fun QuestionZigzagDisplay(
             state = QuestionCardUiState(
                 description = "Qual a capital da França?",
                 answers = listOf(
-                    AnswerUiState(text = "Paris", id = "1", isCorrect = true),
-                    AnswerUiState(text = "Londres", id = "2", isCorrect = false)
+                    AnswerUiState(text = "Paris", isCorrect = true),
+                    AnswerUiState(text = "Londres", isCorrect = false)
                 )
             ),
             cardIndex = 1,
@@ -121,8 +121,8 @@ fun QuestionZigzagDisplay(
             state = QuestionCardUiState(
                 description = "Qual a capital da França?",
                 answers = listOf(
-                    AnswerUiState(text = "Paris", id = "1", isCorrect = true),
-                    AnswerUiState(text = "Londres", id = "2", isCorrect = false)
+                    AnswerUiState(text = "Paris", isCorrect = true),
+                    AnswerUiState(text = "Londres", isCorrect = false)
                 )
             ),
             cardIndex = 2,
@@ -133,8 +133,8 @@ fun QuestionZigzagDisplay(
             state = QuestionCardUiState(
                 description = "Qual a capital da França?",
                 answers = listOf(
-                    AnswerUiState(text = "Paris", id = "1", isCorrect = true),
-                    AnswerUiState(text = "Londres", id = "2", isCorrect = false)
+                    AnswerUiState(text = "Paris", isCorrect = true),
+                    AnswerUiState(text = "Londres", isCorrect = false)
                 )
             ),
             cardIndex = 3,

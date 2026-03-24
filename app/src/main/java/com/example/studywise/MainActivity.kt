@@ -30,6 +30,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.studywise.ui.components.question_zigzag_display.QuestionZigzagDisplay
+import com.example.studywise.ui.navigation.NavigationRoot
 import com.example.studywise.ui.theme.AppTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -41,85 +42,12 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             AppTheme() {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    InitialScreen(
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun InitialScreen(modifier: Modifier = Modifier) {
-    val studyWiseLogo = ImageVector.vectorResource(id = R.drawable.studywise_logo)
-    val painter = rememberVectorPainter(image = studyWiseLogo)
-
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(0.dp, 32.dp)
-        ,
-        verticalArrangement = Arrangement.SpaceBetween,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.Bottom
-        ) {
-            Canvas(modifier = Modifier.size(36.dp)) {
-                with(painter) {
-                    draw(size, density)
-                }
-            }
-            Text(
-                "StudyWise",
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 2.0.sp
-                ),
-            )
-        }
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-        ) {
-            QuestionZigzagDisplay(
-                300
-            )
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
-                    .padding(28.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Button(
-                    onClick = {},
+                NavigationRoot(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp)
-                ) {
-                    Text(
-                        "Get Started",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    )
-                }
+                        .fillMaxSize()
+                )
             }
         }
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun InitialScreenPreview() {
-    AppTheme() {
-        InitialScreen()
-    }
-}
