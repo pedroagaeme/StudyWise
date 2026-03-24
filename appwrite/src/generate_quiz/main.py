@@ -63,161 +63,8 @@ def _get_header(headers, name):
     return ""
 
 
-def _parse_content_disposition(value):
-    result = {}
-    if not value:
-        return result
-
-    parts = [part.strip() for part in str(value).split(";") if part.strip()]
-    for part in parts[1:]:
-        if "=" not in part:
-            continue
-        key, raw_val = part.split("=", 1)
-        key = key.strip().lower()
-        raw_val = raw_val.strip().strip('"')
-        result[key] = raw_val
-    return result
-
-
-def _split_multipart(body_bytes, boundary):
-    delimiter = b"--" + boundary
-    chunks = body_bytes.split(delimiter)
-    parts = []
-
-    for chunk in chunks:
-        stripped = chunk.strip()
-        if not stripped or stripped == b"--":
-            continue
-
-        if stripped.endswith(b"--"):
-            stripped = stripped[:-2].rstrip()
-
-        header_blob, sep, payload = stripped.partition(b"\r\n\r\n")
-        if not sep:
-            header_blob, sep, payload = stripped.partition(b"\n\n")
-            if not sep:
-                continue
-
-        headers = {}
-        header_lines = re.split(rb"\r?\n", header_blob)
-        for line in header_lines:
-            if b":" not in line:
-                continue
-            key, value = line.split(b":", 1)
-            headers[key.decode("utf-8", errors="ignore").strip().lower()] = value.decode(
-                "utf-8", errors="ignore"
-            ).strip()
-
-        payload = payload.rstrip(b"\r\n")
-        parts.append({"headers": headers, "content": payload})
-
-    return parts
-
-
-def _extend_links(target, text):
-    raw = str(text or "").strip()
-    if not raw:
-        return
-
-    try:
-        parsed = json.loads(raw)
-        if isinstance(parsed, list):
-            for item in parsed:
-                item_text = str(item).strip()
-                if item_text:
-                    target.append(item_text)
-            return
-        if isinstance(parsed, str) and parsed.strip():
-            target.append(parsed.strip())
-            return
-    except json.JSONDecodeError:
-        pass
-
-    for token in re.split(r"[\n,]", raw):
-        link = token.strip()
-        if link:
-            target.append(link)
-
-
-def _parse_multipart_body(context):
-    headers = getattr(context.req, "headers", {}) or {}
-    content_type = _get_header(headers, "content-type")
-    match = re.search(r"boundary=(.+)$", content_type)
-    if not match:
-        raise ValueError("multipart/form-data request is missing boundary")
-
-    boundary = match.group(1).strip().strip('"').encode("utf-8", errors="ignore")
-    if not boundary:
-        raise ValueError("multipart/form-data request has invalid boundary")
-
-    raw_body = getattr(context.req, "body", b"")
-    if isinstance(raw_body, str):
-        body_bytes = raw_body.encode("utf-8", errors="ignore")
-    elif isinstance(raw_body, (bytes, bytearray)):
-        body_bytes = bytes(raw_body)
-    else:
-        raise ValueError("multipart/form-data body is missing")
-
-    parts = _split_multipart(body_bytes, boundary)
-    payload = {
-        "difficulty": "",
-        "size": "",
-        "quiz_summary": "",
-        "documents": {"links": [], "files": []},
-    }
-
-    for part in parts:
-        part_headers = part["headers"]
-        disposition = _parse_content_disposition(part_headers.get("content-disposition", ""))
-        field_name = disposition.get("name", "").strip()
-        filename = disposition.get("filename", "").strip()
-        part_content_type = part_headers.get("content-type", "application/octet-stream")
-        content = part["content"]
-
-        if filename:
-            payload["documents"]["files"].append(
-                {
-                    "name": filename,
-                    "content": base64.b64encode(content).decode("utf-8"),
-                    "encoding": "base64",
-                    "content_type": part_content_type,
-                }
-            )
-            continue
-
-        text_value = content.decode("utf-8", errors="ignore").strip()
-        lowered = field_name.lower()
-
-        if lowered in {"difficulty", "size", "quiz_summary"}:
-            payload[lowered] = text_value
-            continue
-
-        if lowered in {"links", "links[]", "documents.links", "documents.links[]"}:
-            _extend_links(payload["documents"]["links"], text_value)
-            continue
-
-        if lowered in {"documents"} and text_value:
-            try:
-                docs_value = json.loads(text_value)
-                if isinstance(docs_value, dict):
-                    links = docs_value.get("links", [])
-                    files = docs_value.get("files", [])
-                    for link in links:
-                        link_text = str(link).strip()
-                        if link_text:
-                            payload["documents"]["links"].append(link_text)
-                    if isinstance(files, list):
-                        for file_item in files:
-                            if isinstance(file_item, dict):
-                                payload["documents"]["files"].append(file_item)
-            except json.JSONDecodeError:
-                pass
-
-    return payload
-
-
 def json_error(context, status_code, message):
-    context.res.status_code(status_code)
+    context.res.status_code = status_code
     return context.res.json({"error": message})
 
 
@@ -251,11 +98,16 @@ def _first_env(*names):
             return value
     return ""
 
-
-def _get_storage_bucket_id():
-    bucket_id = _first_env("APPWRITE_BUCKET_ID", "APPWRITE_STORAGE_BUCKET_ID")
+def _get_input_documents_bucket_id():
+    bucket_id = _first_env("APPWRITE_INPUT_DOCUMENTS_BUCKET_ID")
     if not bucket_id:
-        raise RuntimeError("Missing APPWRITE_BUCKET_ID environment variable")
+        raise RuntimeError("Missing APPWRITE_INPUT_DOCUMENTS_BUCKET_ID environment variable")
+    return bucket_id
+
+def _get_quiz_responses_bucket_id():
+    bucket_id = _first_env("APPWRITE_QUIZ_RESPONSES_BUCKET_ID")
+    if not bucket_id:
+        raise RuntimeError("Missing APPWRITE_QUIZ_RESPONSES_BUCKET_ID environment variable")
     return bucket_id
 
 
@@ -287,7 +139,7 @@ def _fetch_appwrite_file_as_document(file_id):
         raise ValueError("Invalid Appwrite document id")
 
     storage = _get_appwrite_storage()
-    bucket_id = _get_storage_bucket_id()
+    bucket_id = _get_input_documents_bucket_id()
 
     _ctx_log(None, f"[storage] start file_id={cleaned_file_id} bucket_id={bucket_id}")
     t_meta = time.time()
@@ -793,21 +645,23 @@ def build_prompt(difficulty, size, quiz_summary, documents_context, has_source_m
         f"{documents_context}\n\n"
         "Output instructions:\n"
         "1) Return JSON only (no markdown).\n"
-        "2) JSON schema: {\"suggested_name\": string, \"suggested_subject\": string, \"difficulty\": string, \"questions\": Question[]}\n"
-        "3) Question schema: {\"type\": \"multiple_choice\", \"question\": string, \"options\": string[4], \"correct_answer\": int, \"explanation\": string}\n"
-        "4) Number of questions must match requested size range.\n"
-        "5) Focus on the subject matter and meaning of the content, not its formatting or document structure.\n"
-        "6) Ignore file-format artifacts (for example PDF headers, page numbers, table-of-contents markers, and layout labels).\n"
+        "2) JSON schema: {\"title\": string, \"quiz_collection\": QuizCollection, \"difficulty\": string, \"questions\": Question[]}\n"
+        "3) QuizCollection schema: {\"name\": string}\n"
+        "4) Question schema: {\"type\": \"multiple_choice\", \"description\": string, \"answer_options\": AnswerOption[], \"explanation\": string}\n"
+        "5) AnswerOption schema: {\"text\": string, \"is_correct\": boolean}\n"
+        "6) Number of questions must match requested size range.\n"
+        "7) Focus on the subject matter and meaning of the content, not its formatting or document structure.\n"
+        "8) Ignore file-format artifacts (for example PDF headers, page numbers, table-of-contents markers, and layout labels).\n"
     )
 
     if has_source_material:
         prompt += (
-            "7) Keep questions coherent with the supplied material.\n"
-            "8) Do not include content not inferable from the provided source materials.\n"
+            "9) Keep questions coherent with the supplied material.\n"
+            "10) Do not include content not inferable from the provided source materials.\n"
         )
     else:
         prompt += (
-            "7) No source files or links were provided, so use general knowledge to create a coherent quiz from the summary.\n"
+            "9) No source files or links were provided, so use general knowledge to create a coherent quiz from the summary.\n"
         )
 
     return prompt
@@ -950,6 +804,7 @@ def main(context):
     size = str(body.get("size", "")).strip().lower()
     quiz_summary = str(body.get("quiz_summary", "")).strip()
     documents = body.get("documents")
+    quiz_response_file_name = str(body.get("quiz_response_file_name", "")).strip()
 
     _ctx_log(
         context,
@@ -988,7 +843,35 @@ def main(context):
 
         quiz = parse_quiz(generated_text)
         _ctx_log(context, f"[{request_id}] response_success")
-        return context.res.json({"quiz": quiz})
+
+
+        # Write quiz JSON to responses bucket using request_id as file name
+        import tempfile
+        from appwrite.input_file import InputFile
+        storage = _get_appwrite_storage()
+        responses_bucket_id = _get_quiz_responses_bucket_id()
+        quiz_json_bytes = json.dumps({"quiz": quiz}, ensure_ascii=False, indent=2).encode("utf-8")
+        if not quiz_response_file_name:
+            return json_error(context, 400, "quiz_response_file_name is required in the request body")
+        file_name = f"{quiz_response_file_name}.json"
+        try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as tmpf:
+                tmpf.write(quiz_json_bytes)
+                tmpf.flush()
+                tmp_path = tmpf.name
+            input_file = InputFile.from_path(tmp_path)
+            storage.create_file(
+                bucket_id=responses_bucket_id,
+                file_id=file_name,
+                file=input_file,
+            )
+            _ctx_log(context, f"[{request_id}] quiz_json_uploaded bucket={responses_bucket_id} file={file_name}")
+        except Exception as upload_err:
+            context.error(f"Failed to upload quiz JSON: {repr(upload_err)}")
+            return json_error(context, 500, "Failed to upload quiz JSON to storage")
+
+        # Optionally, return a minimal response (or nothing)
+        return context.res.json({"quiz_file_id": file_name, "bucket_id": responses_bucket_id})
     except RuntimeError as runtime_err:
         context.error(f"OpenRouter request failed: {repr(runtime_err)}")
         if str(runtime_err).startswith("OpenRouter API"):
