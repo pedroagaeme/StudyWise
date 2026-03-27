@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -41,12 +42,12 @@ fun CollectionHeader(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            imageVector = Icons.Default.KeyboardArrowRight,
+            imageVector = Icons.Default.KeyboardArrowDown,
             contentDescription = if (progress > 0.5f) "Collapse" else "Expand",
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier
                 .size(24.dp)
-                .graphicsLayer { rotationZ = 90f * progress }
+                .graphicsLayer { rotationZ = 90f * (progress - 1) }
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(

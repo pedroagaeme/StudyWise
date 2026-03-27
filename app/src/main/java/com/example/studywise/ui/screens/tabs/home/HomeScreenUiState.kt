@@ -1,5 +1,6 @@
 package com.example.studywise.ui.screens.tabs.home
 
+import androidx.compose.foundation.lazy.LazyListState
 import com.example.studywise.ui.components.model.Collection
 import com.example.studywise.ui.components.model.Quiz
 
@@ -7,5 +8,6 @@ data class HomeScreenUiState (
     val recentQuizzes: List<Quiz> = emptyList(),
     val collections: List<Collection> = emptyList(),
     val collectionsExpandableState: List<Boolean> = emptyList(),
-    val mostRecentExpandedCollectionIndex: Int? = null
+    val collectionsScrollOffsets: List<Float> = emptyList(),
+    val listState: LazyListState = LazyListState()
 )

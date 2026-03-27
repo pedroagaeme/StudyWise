@@ -6,8 +6,6 @@ import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -23,6 +21,7 @@ import com.example.studywise.ui.screens.tabs.home.components.SectionHeader
 import com.example.studywise.ui.components.model.Collection
 import com.example.studywise.ui.components.model.Quiz
 import com.example.studywise.ui.theme.AppTheme
+import com.example.studywise.utils.ObserveAsEvents
 import com.example.studywise.viewmodels.HomeScreenViewModel
 import kotlin.math.max
 
@@ -34,10 +33,18 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsState()
     val onAction = viewModel::onAction
 
+    ObserveAsEvents(viewModel.events) { event ->
+        when(event) {
+            is HomeScreenEvent.ScrollBy -> {
+                uiState.listState.animateScrollBy(event.offset, tween(700))
+            }
+        }
+    }
+
     HomeScreenContent(
         innerPadding = innerPadding,
         state = uiState,
-        onAction = onAction
+        onAction = onAction,
     )
 }
 @Composable
@@ -45,15 +52,14 @@ fun HomeScreenContent(
     modifier: Modifier = Modifier,
     innerPadding: PaddingValues = PaddingValues(0.dp),
     state: HomeScreenUiState,
-    onAction: (HomeScreenAction) -> Unit
+    onAction: (HomeScreenAction) -> Unit,
 ) {
-    val listState = rememberLazyListState()
     Surface(
         modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.surfaceContainerLowest
     ) {
         LazyColumn(
-            state = listState,
+            state = state.listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
                 bottom = innerPadding.calculateBottomPadding() + 8.dp,
@@ -83,16 +89,11 @@ fun HomeScreenContent(
                         collection = collection,
                         expanded = state.collectionsExpandableState[index],
                         onExpandClick = {
-                            onAction(HomeScreenAction.ToggleCollectionExpandableState(index))
+                            onAction(HomeScreenAction.OnToggleCollectionExpandableState(index))
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        listState = listState,
-                        itemToScroll = index + 3,
-                        mostRecentExpandedItemIndex =
-                            if (state.mostRecentExpandedCollectionIndex != null)
-                                state.mostRecentExpandedCollectionIndex + 3
-                            else
-                                null
+                        collectionIndex = index,
+                        onAction = onAction
                     )
                 }
             }
@@ -106,35 +107,33 @@ fun CollectionExpandableBlock(
     expanded: Boolean,
     onExpandClick: () -> Unit,
     modifier: Modifier = Modifier,
+    collectionIndex: Int,
+    onAction: (HomeScreenAction) -> Unit,
     cardHeight: Int = 100,
     cardSpacing: Int = 12,
     expandingSpeed: Float = 1.5f,
-    transitionSpeed: Int = 500,
-    listState: LazyListState,
-    itemToScroll: Int = 0,
-    mostRecentExpandedItemIndex: Int? = null
+    contentTransitionDuration: Int = 500
 ) {
     val transition = updateTransition(targetState = expanded, label = "expandTransition")
     val progress by transition.animateFloat(
-        transitionSpec = { tween(durationMillis = transitionSpeed) },
+        transitionSpec = { tween(durationMillis = contentTransitionDuration) },
         label = "expandProgress"
     ) { if (it) 1f else 0f }
-
+    val scrollOffset = remember { mutableFloatStateOf(0f) }
 
     // Animate vertical space for quizzes
     val quizzes = collection.quizzes
     val maxHeight = (quizzes.size * cardHeight + (quizzes.size) * cardSpacing).dp
     val animatedHeight = if (progress > 0f) ((maxHeight * progress * expandingSpeed).coerceIn(0.dp, maxHeight)) else 0.dp
 
-    LaunchedEffect(progress, mostRecentExpandedItemIndex) {
-        if (progress > 0.75f && (itemToScroll == mostRecentExpandedItemIndex)) {
-            listState.animateScrollToItem(itemToScroll)
-        }
-    }
-
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .onGloballyPositioned({
+                val offset = it.positionInParent().y
+                val newOffset = max(0f, offset - 100f)
+                onAction(HomeScreenAction.OnScrollOffsetChanged(collectionIndex, newOffset))
+            })
     ) {
         CollectionHeader(
             collection = collection,
