@@ -31,6 +31,7 @@ data class CreateQuizUiState(
     val quizSize: QuizSize = QuizSize.MEDIUM,
     val quizDifficulty: QuizDifficulty = QuizDifficulty.MEDIUM,
     val quizSummary: String = "",
-    val attachments: List<AttachmentPreview> = emptyList()
+    val attachments: List<AttachmentPreview> = emptyList(),
+    val pendingEffect: CreateQuizScreenEffect? = null
 )
 

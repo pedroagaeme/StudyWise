@@ -1,20 +1,21 @@
 package com.example.studywise.viewmodels
 
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.studywise.data.repository.QuizRepository
 import com.example.studywise.ui.components.model.Collection
 import com.example.studywise.ui.components.model.Quiz
 import com.example.studywise.ui.screens.tabs.home.HomeScreenAction
-import com.example.studywise.ui.screens.tabs.home.HomeScreenEvent
+import com.example.studywise.ui.screens.tabs.home.HomeScreenEffect
 import com.example.studywise.ui.screens.tabs.home.HomeScreenUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -26,9 +27,6 @@ class HomeScreenViewModel @Inject constructor(
 ): ViewModel() {
     private val _uiState = MutableStateFlow(HomeScreenUiState())
     val uiState: StateFlow<HomeScreenUiState> = _uiState.asStateFlow()
-
-    private val eventChannel = Channel<HomeScreenEvent>()
-    val events = eventChannel.receiveAsFlow()
 
     val recentQuizzes = listOf(
         Quiz("1", "Organic Chemistry", "2m ago", "University", questionCount = 18, averageScore = 14f),
@@ -71,6 +69,12 @@ class HomeScreenViewModel @Inject constructor(
         )
     }
 
+    fun effectConsumed() {
+        _uiState.update {
+            it.copy(pendingEffect = null)
+        }
+    }
+
     fun onAction(action: HomeScreenAction) {
         when(action) {
             is HomeScreenAction.OnToggleCollectionExpandableState -> {
@@ -81,9 +85,14 @@ class HomeScreenViewModel @Inject constructor(
                         },
                     )
                 }
-                if(_uiState.value.collectionsExpandableState[action.collectionIndex]){
-                    viewModelScope.launch {
-                        eventChannel.send(HomeScreenEvent.ScrollBy(_uiState.value.collectionsScrollOffsets[action.collectionIndex]))
+                if (_uiState.value.collectionsExpandableState[action.collectionIndex]) {
+                    _uiState.update {
+                        currentState ->
+                        currentState.copy(
+                            pendingEffect = HomeScreenEffect.ScrollBy(
+                                _uiState.value.collectionsScrollOffsets[action.collectionIndex]
+                            )
+                        )
                     }
                 }
             }
@@ -99,6 +108,4 @@ class HomeScreenViewModel @Inject constructor(
             }
         }
     }
-
-
 }

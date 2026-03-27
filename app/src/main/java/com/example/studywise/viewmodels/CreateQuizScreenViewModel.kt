@@ -10,16 +10,14 @@ import com.example.studywise.data.repository.QuizRepository
 import com.example.studywise.ui.screens.create_quiz.AttachmentPreview
 import com.example.studywise.ui.screens.create_quiz.AttachmentType
 import com.example.studywise.ui.screens.create_quiz.CreateQuizScreenAction
-import com.example.studywise.ui.screens.create_quiz.CreateQuizScreenEvent
+import com.example.studywise.ui.screens.create_quiz.CreateQuizScreenEffect
 import com.example.studywise.ui.screens.create_quiz.CreateQuizUiState
 import com.example.studywise.utils.uriToFile
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -34,14 +32,17 @@ class CreateQuizScreenViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(CreateQuizUiState())
     val uiState: StateFlow<CreateQuizUiState> = _uiState.asStateFlow()
 
-    private val eventChannel = Channel<CreateQuizScreenEvent>()
-    val events = eventChannel.receiveAsFlow()
+
 
     fun onAction(action: CreateQuizScreenAction) {
         when (action) {
             is CreateQuizScreenAction.OnDismiss -> {
                 viewModelScope.launch {
-                    eventChannel.send(CreateQuizScreenEvent.Dismiss)
+                    _uiState.update {
+                        currentState -> currentState.copy(
+                            pendingEffect = CreateQuizScreenEffect.Dismiss
+                        )
+                    }
                 }
             }
             is CreateQuizScreenAction.OnGenerateQuizButtonClick -> {
@@ -49,7 +50,11 @@ class CreateQuizScreenViewModel @Inject constructor(
             }
             is CreateQuizScreenAction.OnFileButtonClick -> {
                 viewModelScope.launch {
-                    eventChannel.send(CreateQuizScreenEvent.OpenFilePicker)
+                    _uiState.update {
+                        currentState -> currentState.copy(
+                            pendingEffect = CreateQuizScreenEffect.OpenFilePicker
+                        )
+                    }
                 }
             }
             is CreateQuizScreenAction.OnAddAttachment -> {
@@ -110,7 +115,11 @@ class CreateQuizScreenViewModel @Inject constructor(
             )
             val quizId = repository.uploadQuiz(result.quiz)
             quizId?: return@launch
-            eventChannel.send(CreateQuizScreenEvent.QuizGenerated(quizId))
+            _uiState.update {
+                currentState -> currentState.copy(
+                    pendingEffect = CreateQuizScreenEffect.QuizGenerated(quizId)
+                )
+            }
         }
     }
 

@@ -9,5 +9,6 @@ data class HomeScreenUiState (
     val collections: List<Collection> = emptyList(),
     val collectionsExpandableState: List<Boolean> = emptyList(),
     val collectionsScrollOffsets: List<Float> = emptyList(),
-    val listState: LazyListState = LazyListState()
+    val listState: LazyListState = LazyListState(),
+    val pendingEffect: HomeScreenEffect? = null,
 )

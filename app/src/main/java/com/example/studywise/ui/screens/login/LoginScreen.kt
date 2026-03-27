@@ -38,19 +38,22 @@ fun LoginScreen (
     replaceWithTabsRoute: () -> Unit = {}
 ) {
 
-    val state by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
     val onAction = viewModel::onAction
 
-    ObserveAsEvents(viewModel.events) { event ->
-        when (event) {
-            is LoginScreenEvent.LoginSuccess -> replaceWithTabsRoute()
-            else -> Unit
+    LaunchedEffect(uiState.pendingEffect) {
+        uiState.pendingEffect?.let { effect ->
+            when (effect) {
+                is LoginScreenEffect.LoginSuccess -> replaceWithTabsRoute()
+                else -> Unit
+            }
+            viewModel.effectConsumed()
         }
     }
 
     LoginScreenContent(
         modifier = modifier,
-        state = state,
+        state = uiState,
         onAction = onAction
     )
 }

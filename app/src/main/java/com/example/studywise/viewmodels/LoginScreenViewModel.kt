@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.studywise.data.repository.AuthRepository
 import com.example.studywise.ui.screens.login.LoginScreenAction
-import com.example.studywise.ui.screens.login.LoginScreenEvent
+import com.example.studywise.ui.screens.login.LoginScreenEffect
 import com.example.studywise.ui.screens.login.LoginScreenUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
@@ -24,16 +24,23 @@ class LoginScreenViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(LoginScreenUiState())
     val uiState: StateFlow<LoginScreenUiState> = _uiState.asStateFlow()
 
-    private val eventChannel = Channel<LoginScreenEvent>()
-    val events = eventChannel.receiveAsFlow()
 
     init {
         viewModelScope.launch {
             if(authRepository.isSessionActive()) {
-                eventChannel.send(LoginScreenEvent.LoginSuccess)
+                _uiState.update { currentState ->
+                    currentState.copy(pendingEffect = LoginScreenEffect.LoginSuccess)
+                }
             }
         }
     }
+
+    fun effectConsumed() {
+        _uiState.update {
+            it.copy(pendingEffect = null)
+        }
+    }
+
     fun onAction(action: LoginScreenAction) {
         when (action) {
             is LoginScreenAction.OnLoginButtonClick -> {
@@ -43,15 +50,21 @@ class LoginScreenViewModel @Inject constructor(
                             email = _uiState.value.email,
                             password = _uiState.value.password
                         )
-                        eventChannel.send(LoginScreenEvent.LoginSuccess)
+                        _uiState.update { currentState ->
+                            currentState.copy(pendingEffect = LoginScreenEffect.LoginSuccess)
+                        }
                     } catch (e: Exception) {
-                        eventChannel.send(LoginScreenEvent.LoginFailure(e.message ?: "An error occurred"))
+                        _uiState.update { currentState ->
+                            currentState.copy(pendingEffect = LoginScreenEffect.LoginFailure(e.message ?: "Unknown error"))
+                        }
                     }
                 }
             }
             is LoginScreenAction.OnSignUpButtonClick -> {
                 viewModelScope.launch {
-                    eventChannel.send(LoginScreenEvent.NavigateToSignUpScreen)
+                    _uiState.update { currentState ->
+                        currentState.copy(pendingEffect = LoginScreenEffect.NavigateToSignUpScreen)
+                    }
                 }
             }
             is LoginScreenAction.OnEmailChange -> {

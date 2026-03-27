@@ -23,6 +23,7 @@ import com.example.studywise.ui.components.model.Quiz
 import com.example.studywise.ui.theme.AppTheme
 import com.example.studywise.utils.ObserveAsEvents
 import com.example.studywise.viewmodels.HomeScreenViewModel
+import kotlinx.coroutines.flow.Flow
 import kotlin.math.max
 
 @Composable
@@ -33,11 +34,16 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsState()
     val onAction = viewModel::onAction
 
-    ObserveAsEvents(viewModel.events) { event ->
-        when(event) {
-            is HomeScreenEvent.ScrollBy -> {
-                uiState.listState.animateScrollBy(event.offset, tween(700))
+    LaunchedEffect(uiState.pendingEffect) {
+        uiState.pendingEffect?.let { effect ->
+            when (effect) {
+                is HomeScreenEffect.ScrollBy -> {
+                    uiState.listState.animateScrollBy(
+                        effect.offset,
+                        tween(700)
+                    ) }
             }
+            viewModel.effectConsumed()
         }
     }
 
@@ -47,6 +53,7 @@ fun HomeScreen(
         onAction = onAction,
     )
 }
+
 @Composable
 fun HomeScreenContent(
     modifier: Modifier = Modifier,

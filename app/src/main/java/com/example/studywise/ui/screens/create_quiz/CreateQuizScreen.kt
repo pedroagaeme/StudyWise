@@ -12,6 +12,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -40,37 +41,43 @@ fun CreateQuizScreen(
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
         onResult = { uri ->
-            if(uri != null)
+            if (uri != null)
                 viewModel.onAction(CreateQuizScreenAction.OnAddAttachment(AttachmentType.FILE, uri))
         }
     )
 
 
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val onAction = viewModel::onAction
 
-    ObserveAsEvents(viewModel.events) { event ->
-        when (event) {
-            is CreateQuizScreenEvent.OpenFilePicker -> {
-                launcher.launch(
-                    arrayOf(
-                        "application/pdf",
-                        "image/*",
-                        "video/*"
+    LaunchedEffect(uiState.pendingEffect) {
+        uiState.pendingEffect.let { effect ->
+            when (effect) {
+                is CreateQuizScreenEffect.OpenFilePicker -> {
+                    launcher.launch(
+                        arrayOf(
+                            "application/pdf",
+                            "image/*",
+                            "video/*"
+                        )
                     )
-                )
-            }
-            is CreateQuizScreenEvent.Dismiss -> {
-                goBack()
-            }
-            is CreateQuizScreenEvent.QuizGenerated -> {
-                replaceWithAnswerQuizRoute(event.quizId)
+                }
+
+                is CreateQuizScreenEffect.Dismiss -> {
+                    goBack()
+                }
+
+                is CreateQuizScreenEffect.QuizGenerated -> {
+                    replaceWithAnswerQuizRoute(effect.quizId)
+                }
+
+                else -> Unit
             }
         }
     }
 
     CreateQuizScreenContent(
-        state = state,
+        state = uiState,
         onAction = onAction,
         modifier = modifier
     )
