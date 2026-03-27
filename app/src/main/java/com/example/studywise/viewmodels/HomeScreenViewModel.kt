@@ -65,7 +65,8 @@ class HomeScreenViewModel @Inject constructor(
                     currentState.copy(
                         collectionsExpandableState = currentState.collectionsExpandableState.mapIndexed { index, isExpanded ->
                             if (index == action.collectionIndex) !isExpanded else isExpanded
-                        }
+                        },
+                        mostRecentExpandedCollectionIndex = action.collectionIndex
                     )
                 }
             }

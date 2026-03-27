@@ -1,22 +1,20 @@
 package com.example.studywise.ui.screens.tabs.home
-
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.studywise.ui.screens.tabs.home.components.CollectionHeader
@@ -25,9 +23,8 @@ import com.example.studywise.ui.screens.tabs.home.components.SectionHeader
 import com.example.studywise.ui.components.model.Collection
 import com.example.studywise.ui.components.model.Quiz
 import com.example.studywise.ui.theme.AppTheme
-import com.example.studywise.viewmodels.CreateQuizScreenViewModel
 import com.example.studywise.viewmodels.HomeScreenViewModel
-import kotlinx.coroutines.delay
+import kotlin.math.max
 
 @Composable
 fun HomeScreen(
@@ -50,12 +47,13 @@ fun HomeScreenContent(
     state: HomeScreenUiState,
     onAction: (HomeScreenAction) -> Unit
 ) {
-
+    val listState = rememberLazyListState()
     Surface(
         modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.surfaceContainerLowest
     ) {
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
                 bottom = innerPadding.calculateBottomPadding() + 8.dp,
@@ -69,13 +67,12 @@ fun HomeScreenContent(
             item {
                 SectionHeader("Recent")
             }
-            items(state.recentQuizzes) { quiz ->
-                QuizCard(quiz)
+            item {
+                RecentQuizzesBlock(quizzes = state.recentQuizzes)
             }
 
             // Collections Section
             item {
-                Spacer(modifier = Modifier.height(8.dp))
                 SectionHeader("Collections")
             }
 
@@ -88,7 +85,14 @@ fun HomeScreenContent(
                         onExpandClick = {
                             onAction(HomeScreenAction.ToggleCollectionExpandableState(index))
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        listState = listState,
+                        itemToScroll = index + 3,
+                        mostRecentExpandedItemIndex =
+                            if (state.mostRecentExpandedCollectionIndex != null)
+                                state.mostRecentExpandedCollectionIndex + 3
+                            else
+                                null
                     )
                 }
             }
@@ -103,18 +107,30 @@ fun CollectionExpandableBlock(
     onExpandClick: () -> Unit,
     modifier: Modifier = Modifier,
     cardHeight: Int = 100,
-    cardSpacing: Int = 12
+    cardSpacing: Int = 12,
+    expandingSpeed: Float = 1.5f,
+    transitionSpeed: Int = 500,
+    listState: LazyListState,
+    itemToScroll: Int = 0,
+    mostRecentExpandedItemIndex: Int? = null
 ) {
     val transition = updateTransition(targetState = expanded, label = "expandTransition")
     val progress by transition.animateFloat(
-        transitionSpec = { tween(durationMillis = 500) },
+        transitionSpec = { tween(durationMillis = transitionSpeed) },
         label = "expandProgress"
     ) { if (it) 1f else 0f }
+
 
     // Animate vertical space for quizzes
     val quizzes = collection.quizzes
     val maxHeight = (quizzes.size * cardHeight + (quizzes.size) * cardSpacing).dp
-    val animatedHeight = if (progress > 0f) ((maxHeight * progress * 1.5f).coerceIn(0.dp, maxHeight)) else 0.dp
+    val animatedHeight = if (progress > 0f) ((maxHeight * progress * expandingSpeed).coerceIn(0.dp, maxHeight)) else 0.dp
+
+    LaunchedEffect(progress, mostRecentExpandedItemIndex) {
+        if (progress > 0.75f && (itemToScroll == mostRecentExpandedItemIndex)) {
+            listState.animateScrollToItem(itemToScroll)
+        }
+    }
 
     Column(
         modifier = modifier
@@ -132,28 +148,79 @@ fun CollectionExpandableBlock(
                 .height(animatedHeight)
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
             ) {
                 quizzes.forEachIndexed { quizIndex, quiz ->
-                    // Each quiz slides in/out horizontally based on progress
-                    val slideProgress = (1.3f * progress - quizIndex * 0.15f).coerceIn(0f, 1f)
-                    val offsetX = (1f - slideProgress) * 100f
-                    Column(
-                        modifier = Modifier
-                            .offset(x = offsetX.dp)
-                            .alpha(slideProgress)
-                    ) {
-                        QuizCard(
-                            quiz.copy(
-                                averageScore = (quiz.averageScore?:0f) * slideProgress
-                            ),
-                            Modifier.height(cardHeight.dp)
-                        )
-                        Spacer(modifier = Modifier.height(cardSpacing.dp))
-                    }
+                    AnimatedQuizCard(
+                        quiz = quiz,
+                        progress = progress,
+                        quizIndex = quizIndex,
+                        totalQuizzes = quizzes.count(),
+                        cardHeight = cardHeight
+                    )
+                    Spacer(modifier = Modifier.height(cardSpacing.dp))
                 }
             }
         }
+    }
+}
+
+@Composable
+fun RecentQuizzesBlock(
+    quizzes: List<Quiz>,
+    modifier: Modifier = Modifier,
+    cardHeight: Int = 100,
+    cardSpacing: Int = 12,
+    animationDuration: Int = 600
+) {
+    val progress = remember { Animatable(0f) }
+
+    LaunchedEffect(quizzes) {
+        progress.snapTo(0f)
+        progress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(durationMillis = animationDuration)
+        )
+    }
+
+    Column(modifier = modifier) {
+        quizzes.forEachIndexed { quizIndex, quiz ->
+            AnimatedQuizCard(
+                quiz = quiz,
+                progress = progress.value,
+                quizIndex = quizIndex,
+                totalQuizzes = quizzes.size,
+                cardHeight = cardHeight
+            )
+            Spacer(modifier = Modifier.height(cardSpacing.dp))
+        }
+    }
+}
+@Composable
+fun AnimatedQuizCard(
+    modifier: Modifier = Modifier,
+    quiz: Quiz,
+    progress: Float,
+    quizIndex: Int = 0,
+    totalQuizzes: Int = 1,
+    speedDifference: Float = 0.15f,
+    cardHeight: Int = 100
+) {
+    val incrementalSpeed = (totalQuizzes - 1f) * speedDifference
+    val slideProgress = ((1f + incrementalSpeed) * progress - quizIndex * speedDifference).coerceIn(0f, 1f)
+    val offsetX = (1f - slideProgress) * 100f
+    Column(
+        modifier = modifier
+            .offset(x = offsetX.dp)
+            .alpha(slideProgress)
+    ) {
+        QuizCard(
+            quiz.copy(
+                averageScore = (quiz.averageScore ?: 0f) * slideProgress
+            ),
+            Modifier.height(cardHeight.dp)
+        )
     }
 }
 

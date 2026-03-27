@@ -6,5 +6,6 @@ import com.example.studywise.ui.components.model.Quiz
 data class HomeScreenUiState (
     val recentQuizzes: List<Quiz> = emptyList(),
     val collections: List<Collection> = emptyList(),
-    val collectionsExpandableState: List<Boolean> = emptyList()
+    val collectionsExpandableState: List<Boolean> = emptyList(),
+    val mostRecentExpandedCollectionIndex: Int? = null
 )
