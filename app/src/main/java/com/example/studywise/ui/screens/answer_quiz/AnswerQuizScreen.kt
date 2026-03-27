@@ -46,7 +46,7 @@ fun AnswerQuizScreenContent(
         modifier = modifier
             .background(MaterialTheme.colorScheme.background)
             .windowInsetsPadding(WindowInsets.safeDrawing)
-            .padding(horizontal = 32.dp)
+            .padding(horizontal = 24.dp)
     ) {
         QuestionPile(
             state = state,
