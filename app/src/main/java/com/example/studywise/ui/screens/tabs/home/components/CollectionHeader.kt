@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -18,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -26,7 +26,7 @@ import com.example.studywise.ui.components.model.Collection
 @Composable
 fun CollectionHeader(
     collection: Collection,
-    isExpanded: Boolean,
+    progress: Float,
     onExpandClick: () -> Unit
 ) {
     Row(
@@ -41,10 +41,12 @@ fun CollectionHeader(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            imageVector = if (isExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
-            contentDescription = if (isExpanded) "Collapse" else "Expand",
+            imageVector = Icons.Default.KeyboardArrowRight,
+            contentDescription = if (progress > 0.5f) "Collapse" else "Expand",
             tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(24.dp)
+            modifier = Modifier
+                .size(24.dp)
+                .graphicsLayer { rotationZ = 90f * progress }
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(

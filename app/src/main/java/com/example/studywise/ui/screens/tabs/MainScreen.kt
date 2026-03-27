@@ -13,7 +13,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.max
+import androidx.compose.ui.unit.min
 import com.example.studywise.ui.screens.tabs.home.HomeScreen
 import com.example.studywise.ui.screens.tabs.components.MainNavigationItem
 import com.example.studywise.ui.screens.tabs.search.SearchScreen
@@ -27,10 +30,12 @@ fun MainScreen(
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+        contentWindowInsets = WindowInsets.safeContent,
         bottomBar = {
             BottomAppBar(
                 contentPadding = PaddingValues(horizontal = 4.dp),
                 containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                contentColor = contentColorFor(MaterialTheme.colorScheme.surfaceContainer),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -81,10 +86,10 @@ fun MainScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
         ) {
+
             when (selectedTab) {
-                0 -> HomeScreen()
+                0 -> HomeScreen(innerPadding = innerPadding)
                 1 -> SearchScreen()
                 2 -> PlaceholderScreen()
                 3 -> PlaceholderScreen()

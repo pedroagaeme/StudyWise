@@ -20,6 +20,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -57,17 +60,23 @@ fun AdditionalInfoRow(quiz: Quiz) {
 
 @Composable
 fun ProgressIndicatorBox(progress: Float) {
+    // Animate progress value for the indicator
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = tween(durationMillis = 1000),
+        label = "progressAnimation"
+    )
     Box(
         modifier = Modifier
             .size(100.dp),
         contentAlignment = Alignment.Center
     ) {
         CustomCircularProgressIndicator(
-            progress = progress,
+            progress = animatedProgress,
             modifier = Modifier.padding(20.dp)
         )
         Text(
-            text = "${(progress * 100).toInt()}%",
+            text = "${(animatedProgress * 100).toInt()}%",
             style = MaterialTheme.typography.bodyMedium.copy(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
@@ -100,7 +109,10 @@ fun NewQuizBadge() {
     }
 
 @Composable
-fun QuizCard(quiz: Quiz, modifier: Modifier = Modifier) {
+fun QuizCard(
+    quiz: Quiz,
+    modifier: Modifier = Modifier,
+) {
     val progress = if (quiz.averageScore != null && quiz.questionCount > 0) {
         (quiz.averageScore / quiz.questionCount.toFloat()).coerceIn(0f, 1f)
     } else {
@@ -172,6 +184,3 @@ fun QuizCardPreview() {
         )
     }
 }
-
-
-
