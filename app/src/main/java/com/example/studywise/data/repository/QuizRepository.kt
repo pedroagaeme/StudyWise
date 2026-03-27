@@ -10,6 +10,10 @@ import com.example.studywise.data.db.entity.AnswerOptionEntity
 import com.example.studywise.data.db.entity.QuestionEntity
 import com.example.studywise.data.db.entity.QuizCollectionEntity
 import com.example.studywise.data.db.entity.QuizEntity
+import com.example.studywise.data.db.relation.CollectionWithQuizzes
+import com.example.studywise.data.db.relation.QuizBasicInfo
+import com.example.studywise.ui.components.model.Collection
+import com.example.studywise.ui.components.model.Quiz
 import java.io.File
 import java.time.Instant
 import java.util.UUID
@@ -129,6 +133,40 @@ class QuizRepository @Inject constructor(
         } catch (e: Exception) {
             null
         }
+    }
+
+    suspend fun getMostRecentQuizzes(limit: Int): List<Quiz> {
+        val quizInfoList = quizDao.getMostRecentQuizzes(limit)
+        return quizInfoList.map { quizInfo ->
+           quizInfoToQuiz(quizInfo)
+        }
+    }
+
+    suspend fun getCollectionsWithQuizzes(): List<Collection> {
+        return quizDao.getCollectionsWithQuizzes().map { collectionWithQuizzes ->
+            collectionWithQuizzesToCollection(collectionWithQuizzes)
+        }
+    }
+
+    fun collectionWithQuizzesToCollection(collectionWithQuizzes: CollectionWithQuizzes): Collection {
+        return Collection(
+            id = collectionWithQuizzes.collection.id,
+            name = collectionWithQuizzes.collection.name,
+            quizzes = collectionWithQuizzes.quizzes.map { quizInfo ->
+                quizInfoToQuiz(quizInfo = quizInfo)
+            }
+        )
+    }
+
+    fun quizInfoToQuiz(quizInfo: QuizBasicInfo): Quiz {
+        return Quiz(
+            id = quizInfo.quiz.id,
+            title = quizInfo.quiz.title,
+            lastInteracted = quizInfo.lastAttemptedAt ?: quizInfo.quiz.createdAt,
+            questionCount = quizInfo.questionCount,
+            averageScore = quizInfo.averageScore,
+            collectionName = quizInfo.collectionName
+        )
     }
 
     suspend fun uploadQuiz(quiz: QuizData): String? {

@@ -31,6 +31,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.studywise.ui.theme.AppTheme
+import com.example.studywise.utils.formatDateHumanReadable
 
 @Composable
 fun AdditionalInfoRow(quiz: Quiz) {
@@ -49,7 +50,7 @@ fun AdditionalInfoRow(quiz: Quiz) {
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
-            text = quiz.lastInteracted,
+            text = formatDateHumanReadable(quiz.lastInteracted),
             style = MaterialTheme.typography.bodySmall.copy(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Medium

@@ -5,6 +5,8 @@ import com.example.studywise.data.db.entity.AnswerOptionEntity
 import com.example.studywise.data.db.entity.QuestionEntity
 import com.example.studywise.data.db.entity.QuizCollectionEntity
 import com.example.studywise.data.db.entity.QuizEntity
+import com.example.studywise.data.db.relation.CollectionWithQuizzes
+import com.example.studywise.data.db.relation.QuizBasicInfo
 import com.example.studywise.data.db.relation.QuizWithQuestions
 
 @Dao
@@ -45,4 +47,14 @@ interface QuizDao {
     @Query("SELECT QC.* FROM quiz_collection QC JOIN quiz Q ON QC.id = Q.quizCollectionId WHERE Q.id = :quizId")
     suspend fun getQuizCollectionByQuizId(quizId: String): QuizCollectionEntity?
 
+    @Query("SELECT * FROM QuizBasicInfoView ORDER BY lastAttemptedAt DESC LIMIT :limit")
+    suspend fun getMostRecentQuizzes(limit: Int): List<QuizBasicInfo>
+
+
+    @Transaction
+    @Query("""
+        SELECT QC.id, QC.name
+        FROM quiz_collection QC
+    """)
+    suspend fun getCollectionsWithQuizzes(): List<CollectionWithQuizzes>
 }
