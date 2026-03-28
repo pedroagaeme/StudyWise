@@ -14,6 +14,8 @@ import com.example.studywise.data.db.relation.CollectionWithQuizzes
 import com.example.studywise.data.db.relation.QuizBasicInfo
 import com.example.studywise.ui.components.model.Collection
 import com.example.studywise.ui.components.model.Quiz
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import java.io.File
 import java.time.Instant
 import java.util.UUID
@@ -135,16 +137,19 @@ class QuizRepository @Inject constructor(
         }
     }
 
-    suspend fun getMostRecentQuizzes(limit: Int): List<Quiz> {
-        val quizInfoList = quizDao.getMostRecentQuizzes(limit)
-        return quizInfoList.map { quizInfo ->
-           quizInfoToQuiz(quizInfo)
+    fun getMostRecentQuizzes(limit: Int): Flow<List<Quiz>> {
+        return quizDao.getMostRecentQuizzes(limit).map { quizList ->
+            quizList.map { quizInfo ->
+                quizInfoToQuiz(quizInfo)
+            }
         }
     }
 
-    suspend fun getCollectionsWithQuizzes(): List<Collection> {
-        return quizDao.getCollectionsWithQuizzes().map { collectionWithQuizzes ->
-            collectionWithQuizzesToCollection(collectionWithQuizzes)
+    fun getCollectionsWithQuizzes(): Flow<List<Collection>>{
+        return quizDao.getCollectionsWithQuizzes().map { collectionList ->
+            collectionList.map { collectionWithQuizzes ->
+                collectionWithQuizzesToCollection(collectionWithQuizzes)
+            }
         }
     }
 

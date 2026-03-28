@@ -52,7 +52,12 @@ fun NavigationRoot(
                 }
                 is Route.Tabs -> {
                     NavEntry(key) {
-                        MainScreen(pushCreateQuizRoute = { backStack.add(Route.CreateQuiz)})
+                        MainScreen(
+                            pushCreateQuizRoute = { backStack.add(Route.CreateQuiz)},
+                            pushAnswerQuizRoute = { quizId: String ->
+                                backStack.add(Route.AnswerQuiz(quizId))
+                            }
+                        )
                     }
                 }
                 is Route.CreateQuiz -> {

@@ -8,6 +8,7 @@ import com.example.studywise.data.db.entity.QuizEntity
 import com.example.studywise.data.db.relation.CollectionWithQuizzes
 import com.example.studywise.data.db.relation.QuizBasicInfo
 import com.example.studywise.data.db.relation.QuizWithQuestions
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface QuizDao {
@@ -48,7 +49,7 @@ interface QuizDao {
     suspend fun getQuizCollectionByQuizId(quizId: String): QuizCollectionEntity?
 
     @Query("SELECT * FROM QuizBasicInfoView ORDER BY lastAttemptedAt DESC LIMIT :limit")
-    suspend fun getMostRecentQuizzes(limit: Int): List<QuizBasicInfo>
+    fun getMostRecentQuizzes(limit: Int): Flow<List<QuizBasicInfo>>
 
 
     @Transaction
@@ -56,5 +57,5 @@ interface QuizDao {
         SELECT QC.id, QC.name
         FROM quiz_collection QC
     """)
-    suspend fun getCollectionsWithQuizzes(): List<CollectionWithQuizzes>
+    fun getCollectionsWithQuizzes(): Flow<List<CollectionWithQuizzes>>
 }

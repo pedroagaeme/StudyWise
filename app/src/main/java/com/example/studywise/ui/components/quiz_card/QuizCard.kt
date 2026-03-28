@@ -1,4 +1,5 @@
 package com.example.studywise.ui.components.quiz_card
+import android.util.Log
 import com.example.studywise.ui.components.model.Quiz
 import com.example.studywise.ui.components.custom_progress_indicators.CustomCircularProgressIndicator
 import androidx.compose.foundation.BorderStroke
@@ -113,6 +114,7 @@ fun NewQuizBadge() {
 fun QuizCard(
     quiz: Quiz,
     modifier: Modifier = Modifier,
+    onClick: () -> Unit = {}
 ) {
     val progress = if (quiz.averageScore != null && quiz.questionCount > 0) {
         (quiz.averageScore / quiz.questionCount.toFloat()).coerceIn(0f, 1f)
@@ -125,7 +127,8 @@ fun QuizCard(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        onClick = onClick
     ) {
         Row(
             modifier = Modifier

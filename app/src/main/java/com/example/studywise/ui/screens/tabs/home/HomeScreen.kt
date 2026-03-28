@@ -29,7 +29,8 @@ import kotlin.math.max
 @Composable
 fun HomeScreen(
     viewModel: HomeScreenViewModel = hiltViewModel(),
-    innerPadding: PaddingValues
+    innerPadding: PaddingValues,
+    pushAnswerQuizRoute: (String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val onAction = viewModel::onAction
@@ -42,6 +43,9 @@ fun HomeScreen(
                         effect.offset,
                         tween(700)
                     ) }
+                is HomeScreenEffect.NavigateToAnswerQuiz -> {
+                    pushAnswerQuizRoute(effect.quizId)
+                }
             }
             viewModel.effectConsumed()
         }
@@ -81,7 +85,10 @@ fun HomeScreenContent(
                 SectionHeader("Recent")
             }
             item {
-                RecentQuizzesBlock(quizzes = state.recentQuizzes)
+                RecentQuizzesBlock(
+                    quizzes = state.recentQuizzes,
+                    onAction = onAction
+                )
             }
 
             // Collections Section
@@ -94,12 +101,11 @@ fun HomeScreenContent(
                 item(key = "${collection.id}_quizzes") {
                     CollectionExpandableBlock(
                         collection = collection,
-                        expanded = state.collectionsExpandableState[index],
+                        expanded = state.collectionsExpandableState[collection.id] ?: false,
                         onExpandClick = {
-                            onAction(HomeScreenAction.OnToggleCollectionExpandableState(index))
+                            onAction(HomeScreenAction.OnToggleCollectionExpandableState(collection.id))
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        collectionIndex = index,
                         onAction = onAction
                     )
                 }
@@ -114,7 +120,6 @@ fun CollectionExpandableBlock(
     expanded: Boolean,
     onExpandClick: () -> Unit,
     modifier: Modifier = Modifier,
-    collectionIndex: Int,
     onAction: (HomeScreenAction) -> Unit,
     cardHeight: Int = 100,
     cardSpacing: Int = 12,
@@ -139,7 +144,7 @@ fun CollectionExpandableBlock(
             .onGloballyPositioned({
                 val offset = it.positionInParent().y
                 val newOffset = max(0f, offset - 100f)
-                onAction(HomeScreenAction.OnScrollOffsetChanged(collectionIndex, newOffset))
+                onAction(HomeScreenAction.OnScrollOffsetChanged(collection.id, newOffset))
             })
     ) {
         CollectionHeader(
@@ -163,7 +168,10 @@ fun CollectionExpandableBlock(
                         progress = progress,
                         quizIndex = quizIndex,
                         totalQuizzes = quizzes.count(),
-                        cardHeight = cardHeight
+                        cardHeight = cardHeight,
+                        onQuizCardClick = {
+                            onAction(HomeScreenAction.OnQuizCardClick(quiz.id))
+                        }
                     )
                     Spacer(modifier = Modifier.height(cardSpacing.dp))
                 }
@@ -178,7 +186,8 @@ fun RecentQuizzesBlock(
     modifier: Modifier = Modifier,
     cardHeight: Int = 100,
     cardSpacing: Int = 12,
-    animationDuration: Int = 600
+    animationDuration: Int = 600,
+    onAction: (HomeScreenAction) -> Unit
 ) {
     val progress = remember { Animatable(0f) }
 
@@ -197,7 +206,10 @@ fun RecentQuizzesBlock(
                 progress = progress.value,
                 quizIndex = quizIndex,
                 totalQuizzes = quizzes.size,
-                cardHeight = cardHeight
+                cardHeight = cardHeight,
+                onQuizCardClick = {
+                    onAction(HomeScreenAction.OnQuizCardClick(quiz.id))
+                }
             )
             Spacer(modifier = Modifier.height(cardSpacing.dp))
         }
@@ -211,7 +223,8 @@ fun AnimatedQuizCard(
     quizIndex: Int = 0,
     totalQuizzes: Int = 1,
     speedDifference: Float = 0.15f,
-    cardHeight: Int = 100
+    cardHeight: Int = 100,
+    onQuizCardClick: () -> Unit
 ) {
     val incrementalSpeed = (totalQuizzes - 1f) * speedDifference
     val slideProgress = ((1f + incrementalSpeed) * progress - quizIndex * speedDifference).coerceIn(0f, 1f)
@@ -223,9 +236,10 @@ fun AnimatedQuizCard(
     ) {
         QuizCard(
             quiz.copy(
-                averageScore = (quiz.averageScore ?: 0f) * slideProgress
+                averageScore = if (quiz.averageScore == null) null else quiz.averageScore * slideProgress,
             ),
-            Modifier.height(cardHeight.dp)
+            Modifier.height(cardHeight.dp),
+            onClick = onQuizCardClick
         )
     }
 }
