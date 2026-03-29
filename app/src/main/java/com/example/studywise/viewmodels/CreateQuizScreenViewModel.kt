@@ -113,7 +113,7 @@ class CreateQuizScreenViewModel @Inject constructor(
                     .filter { it.type == AttachmentType.LINK }
                     .map { it.uri.toString() }
             )
-            val quizId = repository.uploadQuiz(result.quiz)
+            val quizId = repository.uploadQuiz(result)
             quizId?: return@launch
             _uiState.update {
                 currentState -> currentState.copy(

@@ -1,6 +1,5 @@
 package com.example.studywise.ui.components.quiz_card
 import android.util.Log
-import com.example.studywise.ui.components.model.Quiz
 import com.example.studywise.ui.components.custom_progress_indicators.CustomCircularProgressIndicator
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -31,11 +30,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.studywise.data.QuizDto
 import com.example.studywise.ui.theme.AppTheme
 import com.example.studywise.utils.formatDateHumanReadable
 
 @Composable
-fun AdditionalInfoRow(quiz: Quiz) {
+fun AdditionalInfoRow(quiz: QuizDto) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = "${quiz.questionCount} Questions",
@@ -112,7 +112,7 @@ fun NewQuizBadge() {
 
 @Composable
 fun QuizCard(
-    quiz: Quiz,
+    quiz: QuizDto,
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {}
 ) {
@@ -177,7 +177,7 @@ fun QuizCard(
 fun QuizCardPreview() {
     AppTheme {
         QuizCard(
-            quiz = Quiz(
+            quiz = QuizDto(
                 id = "preview-1",
                 title = "Organic Chemistry",
                 lastInteracted = "2m ago",

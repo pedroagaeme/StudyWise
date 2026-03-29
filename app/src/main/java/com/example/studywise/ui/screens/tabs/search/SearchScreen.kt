@@ -11,8 +11,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.studywise.data.QuizDto
 import com.example.studywise.ui.components.quiz_card.QuizCard
-import com.example.studywise.ui.components.model.Quiz
 import com.example.studywise.ui.theme.AppTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -23,14 +23,7 @@ fun SearchScreen(
     var searchQuery by remember { mutableStateOf("") }
 
     val allQuizzes = remember {
-        listOf(
-            Quiz("1", "Organic Chemistry", "2m ago", "University"),
-            Quiz("2", "Ancient History", "1h ago", "Personal"),
-            Quiz("3", "Advanced Math", "Yesterday", "University"),
-            Quiz("4", "Quantum Physics", "3 days ago", "University"),
-            Quiz("5", "World Geography", "Last week", "Personal"),
-            Quiz("6", "Cooking Basics", "2 weeks ago", "Personal")
-        )
+        emptyList<QuizDto>()
     }
 
     val filteredQuizzes = remember(searchQuery) {

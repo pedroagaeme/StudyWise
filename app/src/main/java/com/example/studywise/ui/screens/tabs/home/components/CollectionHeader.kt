@@ -22,11 +22,11 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.studywise.ui.components.model.Collection
+import com.example.studywise.data.QuizCollectionDto
 
 @Composable
 fun CollectionHeader(
-    collection: Collection,
+    collection: QuizCollectionDto,
     progress: Float,
     onExpandClick: () -> Unit
 ) {

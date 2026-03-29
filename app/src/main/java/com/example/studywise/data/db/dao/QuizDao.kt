@@ -3,6 +3,7 @@ package com.example.studywise.data.db.dao
 import androidx.room.*
 import com.example.studywise.data.db.entity.AnswerOptionEntity
 import com.example.studywise.data.db.entity.QuestionEntity
+import com.example.studywise.data.db.entity.QuizAttemptEntity
 import com.example.studywise.data.db.entity.QuizCollectionEntity
 import com.example.studywise.data.db.entity.QuizEntity
 import com.example.studywise.data.db.relation.CollectionWithQuizzes
@@ -14,6 +15,9 @@ import kotlinx.coroutines.flow.Flow
 interface QuizDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(quizCollection: QuizCollectionEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(quizAttempt: QuizAttemptEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(quiz: QuizEntity)
@@ -28,7 +32,7 @@ interface QuizDao {
         quizCollection: QuizCollectionEntity,
         quiz: QuizEntity,
         questions: List<Pair<QuestionEntity, List<AnswerOptionEntity>>>
-    ) {
+    ): String? {
         insert(quizCollection)
         insert(quiz)
 
@@ -36,6 +40,8 @@ interface QuizDao {
             insert(questionEntity)
             insertAll(answerOptions)
         }
+
+        return quiz.id
     }
 
     @Delete

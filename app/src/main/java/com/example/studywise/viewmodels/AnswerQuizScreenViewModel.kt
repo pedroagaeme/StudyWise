@@ -10,6 +10,7 @@ import com.example.studywise.ui.screens.answer_quiz.AnswerQuizScreenUiState
 import com.example.studywise.ui.screens.answer_quiz.components.question_pile.question_card.answer.AnswerUiState
 import com.example.studywise.ui.screens.answer_quiz.components.question_pile.question_card.QuestionCardUiState
 import com.example.studywise.ui.screens.answer_quiz.AnswerQuizScreenAction
+import com.example.studywise.ui.screens.answer_quiz.AnswerQuizUiEffect
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -42,11 +43,10 @@ class AnswerQuizScreenViewModel @AssistedInject constructor(
     private fun loadQuestionPile() {
         viewModelScope.launch {
             // 1. Fetch the data
-            val quizWithQuestions = repository.getQuizDetails(quizId)
+            val questions = repository.getQuestionsByQuizId(quizId)
 
             // 2. Transform the database models into UI models
-           quizWithQuestions?: return@launch
-            val uiQuestionList = quizWithQuestions.questions.mapIndexed { index, questionWithAnswers ->
+            val uiQuestionList = questions.mapIndexed { index, questionWithAnswers ->
                 QuestionCardUiState(
                     questionNumber = index,
                     description = questionWithAnswers.description,
@@ -64,26 +64,61 @@ class AnswerQuizScreenViewModel @AssistedInject constructor(
             _uiState.update { currentState ->
                 currentState.copy(
                     questionList = uiQuestionList,
+                    currentAttempt = List(uiQuestionList.size) { false },
                     targetIndex = 0 // Reset or set initial index
                 )
             }
         }
     }
 
+    private fun countTotalScore(): Int {
+        return _uiState.value.currentAttempt.map { if (it) 1 else 0 }.sum()
+    }
+
     fun onAction(action: AnswerQuizScreenAction) {
         when(action) {
             is AnswerQuizScreenAction.AnswerSelected -> {
-                val tempQuestionList = _uiState.value.questionList.toMutableList()
-                tempQuestionList[action.questionIndex] = tempQuestionList[action.questionIndex].copy(selectedAnswer = action.answer)
-                _uiState.update { it.copy(questionList = tempQuestionList) }
+                _uiState.update { currentState ->
+                    currentState.copy(questionList = currentState.questionList.map {
+                        questionList ->
+                        if (questionList.questionNumber == action.questionIndex) {
+                            questionList.copy(
+                                answers = questionList.answers.map { answer ->
+                                    if (answer.text == action.answer.text) {
+                                        answer.copy(isSelected = !answer.isSelected)
+                                    } else {
+                                        answer
+                                    }
+                                }
+                            )
+                        }
+                        else questionList
+                    },
+                        currentAttempt = currentState.currentAttempt.mapIndexed { index, _ ->
+                            if (index == action.questionIndex) {
+                                action.answer.isCorrect
+                            } else {
+                                currentState.currentAttempt[index]
+                            }
+                        }
+                    )
+                }
             }
             is AnswerQuizScreenAction.FlipToggled -> {
                 val tempQuestionList = _uiState.value.questionList.toMutableList()
                 tempQuestionList[action.questionIndex] = tempQuestionList[action.questionIndex].copy(isFlipped = !tempQuestionList[action.questionIndex].isFlipped)
-                _uiState.update { it.copy(questionList = tempQuestionList) }
+                _uiState.update { currentState ->
+                    currentState.copy(questionList = tempQuestionList) }
             }
             is AnswerQuizScreenAction.NextQuestionCardRequested -> {
                 _uiState.update { it.copy(targetIndex = action.questionIndex + 1) }
+                if (action.questionIndex >= _uiState.value.questionList.size) {
+                    _uiState.update { currentState ->
+                        currentState.copy(
+                            pendingEffect = AnswerQuizUiEffect.FinishQuiz(countTotalScore())
+                        )
+                    }
+                }
             }
         }
     }

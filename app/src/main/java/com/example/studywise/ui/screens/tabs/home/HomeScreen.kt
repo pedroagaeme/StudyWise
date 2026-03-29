@@ -15,15 +15,13 @@ import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.studywise.data.QuizCollectionDto
+import com.example.studywise.data.QuizDto
 import com.example.studywise.ui.screens.tabs.home.components.CollectionHeader
 import com.example.studywise.ui.components.quiz_card.QuizCard
 import com.example.studywise.ui.screens.tabs.home.components.SectionHeader
-import com.example.studywise.ui.components.model.Collection
-import com.example.studywise.ui.components.model.Quiz
 import com.example.studywise.ui.theme.AppTheme
-import com.example.studywise.utils.ObserveAsEvents
 import com.example.studywise.viewmodels.HomeScreenViewModel
-import kotlinx.coroutines.flow.Flow
 import kotlin.math.max
 
 @Composable
@@ -96,7 +94,7 @@ fun HomeScreenContent(
                 SectionHeader("Collections")
             }
 
-            state.collections.forEachIndexed { index, collection ->
+            state.collections.forEach { collection ->
                 // Animated expansion/collapse for quizzes
                 item(key = "${collection.id}_quizzes") {
                     CollectionExpandableBlock(
@@ -116,7 +114,7 @@ fun HomeScreenContent(
 
 @Composable
 fun CollectionExpandableBlock(
-    collection: Collection,
+    collection: QuizCollectionDto,
     expanded: Boolean,
     onExpandClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -182,7 +180,7 @@ fun CollectionExpandableBlock(
 
 @Composable
 fun RecentQuizzesBlock(
-    quizzes: List<Quiz>,
+    quizzes: List<QuizDto>,
     modifier: Modifier = Modifier,
     cardHeight: Int = 100,
     cardSpacing: Int = 12,
@@ -218,7 +216,7 @@ fun RecentQuizzesBlock(
 @Composable
 fun AnimatedQuizCard(
     modifier: Modifier = Modifier,
-    quiz: Quiz,
+    quiz: QuizDto,
     progress: Float,
     quizIndex: Int = 0,
     totalQuizzes: Int = 1,

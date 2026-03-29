@@ -1,21 +1,24 @@
 package com.example.studywise
 
 import android.content.Context
+import android.util.Log
 import com.example.studywise.constants.*
 import com.example.studywise.data.*
 import io.appwrite.Client
 import io.appwrite.ID
 import io.appwrite.Permission
 import io.appwrite.Role
+import io.appwrite.enums.ExecutionStatus
 import io.appwrite.exceptions.AppwriteException
 import io.appwrite.models.*
 import io.appwrite.services.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import org.json.JSONObject
 import java.io.File
 import java.time.Instant
-import java.util.UUID
 import kotlin.collections.listOf
 import kotlin.time.Duration.Companion.seconds
 
@@ -23,10 +26,11 @@ object Appwrite {
 
     private const val POLL_INTERVAL_MS = 1000L
     private val EXECUTION_TIMEOUT = 90.seconds
-    private val TERMINAL_STATUSES = setOf("completed", "failed", "cancelled")
+    private val TERMINAL_STATUSES = setOf(ExecutionStatus.COMPLETED, ExecutionStatus.FAILED)
+
     lateinit var client: Client
     lateinit var account: Account
-    lateinit var databases: Databases
+    lateinit var tablesDB: TablesDB
     lateinit var functions: Functions
     lateinit var storage: Storage
 
@@ -36,7 +40,7 @@ object Appwrite {
             .setProject(APPWRITE_PROJECT_ID)
 
         account = Account(client)
-        databases = Databases(client)
+        tablesDB = TablesDB(client)
         functions = Functions(client)
         storage = Storage(client)
     }
@@ -87,40 +91,69 @@ object Appwrite {
     }
 
     suspend fun sendVerification(url: String): Token {
-        return account.createVerification(url)
+        return account.createEmailVerification(url)
     }
 
     suspend fun confirmVerification(userId: String, secret: String): Token {
-        return account.updateVerification(userId, secret)
+        return account.updateEmailVerification(userId, secret)
     }
 
-    suspend fun uploadQuiz(quiz: QuizData): String {
-        val uploadedQuiz = databases.createDocument(
-            databaseId = APPWRITE_DATABASE_ID,
-            collectionId = APPWRITE_QUIZ_TABLE_ID,
-            documentId = ID.unique(),
-            data = quiz,
-            permissions = listOf(
-                Permission.read(Role.user(getCurrentUser().id)),
-                Permission.delete(Role.user(getCurrentUser().id))
-            )
+    suspend fun uploadQuiz(quizRequest: UploadQuizRequestData, quizId: String): String? {
+        val quizData = mapOf(
+            "title" to quizRequest.title,
+            "quizCollection" to mapOf(
+                "name" to quizRequest.quizCollection.name
+            ),
+            "questions" to quizRequest.questions.map { question ->
+                mapOf(
+                    "description" to question.description,
+                    "type" to question.type,
+                    "explanation" to question.explanation,
+                    "answerOptions" to question.answerOptions.map { option ->
+                        mapOf(
+                            "text" to option.text,
+                            "isCorrect" to option.isCorrect
+                        )
+                    }
+                )
+            }
         )
-        return uploadedQuiz.id
+
+        try {
+            val uploadedQuiz = tablesDB.createRow(
+                databaseId = APPWRITE_DATABASE_ID,
+                tableId = APPWRITE_QUIZ_TABLE_ID,
+                rowId = quizId,
+                data = quizData,
+                permissions = listOf(
+                    Permission.read(Role.user(getCurrentUser().id)),
+                    Permission.delete(Role.user(getCurrentUser().id))
+                )
+            )
+            return quizId
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return null
+        }
     }
 
-    suspend fun getQuizDetails(quizId: String): Document<Map<String, Any>> {
-        return databases.getDocument(
+    fun generateNewId(): String {
+        return ID.unique()
+    }
+
+    suspend fun getQuizDetails(quizId: String): Row<Map<String, Any>> {
+        return tablesDB.getRow(
             databaseId = APPWRITE_DATABASE_ID,
-            collectionId = APPWRITE_QUIZ_TABLE_ID,
-            documentId = quizId
+            tableId = APPWRITE_QUIZ_TABLE_ID,
+            rowId = quizId
         )
     }
 
     suspend fun deleteQuiz(quizId: String) {
-        databases.deleteDocument(
+        tablesDB.deleteRow(
             databaseId = APPWRITE_DATABASE_ID,
-            collectionId = APPWRITE_QUIZ_TABLE_ID,
-            documentId = quizId
+            tableId = APPWRITE_QUIZ_TABLE_ID,
+            rowId = quizId
         )
     }
 
@@ -215,16 +248,16 @@ object Appwrite {
 
         val finalExecution = withTimeout(EXECUTION_TIMEOUT) {
             var latest = created
-            while (latest.status.lowercase() !in TERMINAL_STATUSES) {
+            while (latest.status !in TERMINAL_STATUSES) {
                 delay(POLL_INTERVAL_MS)
                 latest = functions.getExecution(functionId, latest.id)
             }
             latest
         }
 
-        val finalStatus = finalExecution.status.lowercase()
+        val finalStatus = finalExecution.status
 
-        if (finalStatus != "completed") {
+        if (finalStatus != ExecutionStatus.COMPLETED) {
             throw Exception(
                 "Quiz generation failed. status=$finalStatus, code=${finalExecution.responseStatusCode}"
             )
