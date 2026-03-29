@@ -30,6 +30,8 @@ data class AnswerOptionDto(
 )
 
 data class QuizAttemptDto(
+    val id: String,
     val quizId: String,
-    val score: Int
+    val score: Int,
+    val createdAt: String
 )

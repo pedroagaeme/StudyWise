@@ -18,7 +18,6 @@ import androidx.room.Index
 data class QuizAttemptEntity(
     @PrimaryKey val id: String,
     val quizId: String,
-    val score: Int,
     val createdAt: String,
-    val updatedAt: String
+    val updatedAt: String,
 )

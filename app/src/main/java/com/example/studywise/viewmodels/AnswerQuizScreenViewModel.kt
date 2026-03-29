@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.example.studywise.data.QuestionDto
 import com.example.studywise.data.repository.QuizRepository
 import com.example.studywise.ui.screens.answer_quiz.AnswerQuizScreenUiState
 import com.example.studywise.ui.screens.answer_quiz.components.question_pile.question_card.answer.AnswerUiState
@@ -48,11 +49,13 @@ class AnswerQuizScreenViewModel @AssistedInject constructor(
             // 2. Transform the database models into UI models
             val uiQuestionList = questions.mapIndexed { index, questionWithAnswers ->
                 QuestionCardUiState(
+                    id = questionWithAnswers.id,
                     questionNumber = index,
                     description = questionWithAnswers.description,
                     // Map the nested answers list
                     answers = questionWithAnswers.answerOptions.map { answerData ->
                         AnswerUiState(
+                            id = answerData.id,
                             text = answerData.text,
                             isCorrect = answerData.isCorrect
                         )
@@ -66,17 +69,14 @@ class AnswerQuizScreenViewModel @AssistedInject constructor(
             // 3. Update the UI state
             _uiState.update { currentState ->
                 currentState.copy(
+                    currentAttemptId = repository.generateNewId(),
                     questionList = uiQuestionList,
-                    currentAttempt = List(uiQuestionList.size) { false },
                     targetIndex = 0 // Reset or set initial index
                 )
             }
         }
     }
 
-    private fun countTotalScore(): Int {
-        return _uiState.value.currentAttempt.map { if (it) 1 else 0 }.sum()
-    }
 
     fun onAction(action: AnswerQuizScreenAction) {
         when(action) {
@@ -89,16 +89,22 @@ class AnswerQuizScreenViewModel @AssistedInject constructor(
                             } else {
                                 question
                             }
-                        },
-                        currentAttempt = currentState.currentAttempt.mapIndexed { index, _ ->
-                            if (index == action.questionIndex) {
-                                action.answer.isCorrect
-                            } else {
-                                currentState.currentAttempt[index]
-                            }
                         }
                     )
                 }
+                val questionId = _uiState.value.questionList[action.questionIndex].id
+                val selectedAnswerId = _uiState.value.questionList[action.questionIndex].selectedAnswer?.id
+                val quizAttemptId = _uiState.value.currentAttemptId
+                if (quizAttemptId != null && selectedAnswerId != null) {
+                    viewModelScope.launch {
+                        repository.saveQuestionAttempt(
+                            questionId = questionId,
+                            selectedAnswerId = selectedAnswerId,
+                            quizAttemptId = quizAttemptId,
+                            quizId = quizId
+                        )
+                    }
+                    }
             }
             is AnswerQuizScreenAction.FlipToggled -> {
                 val tempQuestionList = _uiState.value.questionList.toMutableList()
@@ -108,10 +114,10 @@ class AnswerQuizScreenViewModel @AssistedInject constructor(
             }
             is AnswerQuizScreenAction.NextQuestionCardRequested -> {
                 _uiState.update { it.copy(targetIndex = action.questionIndex + 1) }
-                if (action.questionIndex >= _uiState.value.questionList.size) {
+                if (action.questionIndex + 1 >= _uiState.value.questionList.size) {
                     _uiState.update { currentState ->
                         currentState.copy(
-                            pendingEffect = AnswerQuizUiEffect.FinishQuiz(countTotalScore())
+                            pendingEffect = AnswerQuizUiEffect.FinishQuiz
                         )
                     }
                 }

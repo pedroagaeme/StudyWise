@@ -95,10 +95,11 @@ fun QuestionZigzagDisplay(
     ) {
         ZigzagDisplayQuestionCard(
             state = QuestionCardUiState(
-                description = "Qual a capital da França?",
+                id = "1",
+                description = "What is the capital of France?",
                 answers = listOf(
-                    AnswerUiState(text = "Paris", isCorrect = true),
-                    AnswerUiState(text = "Londres", isCorrect = false)
+                    AnswerUiState(id = "1", text = "Paris", isCorrect = true),
+                    AnswerUiState(id = "2", text = "London", isCorrect = false)
                 )
             ),
             cardIndex = 0,
@@ -107,10 +108,11 @@ fun QuestionZigzagDisplay(
         )
         ZigzagDisplayQuestionCard(
             state = QuestionCardUiState(
-                description = "Qual a capital da França?",
+                id = "2",
+                description = "What is the largest planet in our solar system?",
                 answers = listOf(
-                    AnswerUiState(text = "Paris", isCorrect = true),
-                    AnswerUiState(text = "Londres", isCorrect = false)
+                    AnswerUiState(id = "1", text = "Earth", isCorrect = false),
+                    AnswerUiState(id = "2", text = "Jupiter", isCorrect = true)
                 )
             ),
             cardIndex = 1,
@@ -119,10 +121,11 @@ fun QuestionZigzagDisplay(
         )
         ZigzagDisplayQuestionCard(
             state = QuestionCardUiState(
-                description = "Qual a capital da França?",
+                id = "3",
+                description = "Which country is known as the 'Land of the Rising Sun",
                 answers = listOf(
-                    AnswerUiState(text = "Paris", isCorrect = true),
-                    AnswerUiState(text = "Londres", isCorrect = false)
+                    AnswerUiState(id = "1", text = "China", isCorrect = false),
+                    AnswerUiState(id = "2", text = "Japan", isCorrect = true)
                 )
             ),
             cardIndex = 2,
@@ -131,16 +134,16 @@ fun QuestionZigzagDisplay(
         )
         ZigzagDisplayQuestionCard(
             state = QuestionCardUiState(
-                description = "Qual a capital da França?",
+                id = "4",
+                description = "What is the largest ocean in the world?",
                 answers = listOf(
-                    AnswerUiState(text = "Paris", isCorrect = true),
-                    AnswerUiState(text = "Londres", isCorrect = false)
+                    AnswerUiState(id = "1", text = "Atlantic Ocean", isCorrect = true),
+                    AnswerUiState(id = "2", text = "Indian Ocean", isCorrect = false)
                 )
             ),
             cardIndex = 3,
             rotationAngle = 45f,
             cardGap = cardGap
         )
-
     }
 }

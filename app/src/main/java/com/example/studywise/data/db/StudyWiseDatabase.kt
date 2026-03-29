@@ -6,6 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.example.studywise.data.db.dao.QuizDao
 import com.example.studywise.data.db.entity.AnswerOptionEntity
+import com.example.studywise.data.db.entity.QuestionAttemptEntity
 import com.example.studywise.data.db.entity.QuestionEntity
 import com.example.studywise.data.db.entity.QuizAttemptEntity
 import com.example.studywise.data.db.entity.QuizCollectionEntity
@@ -18,10 +19,11 @@ import com.example.studywise.data.db.relation.QuizBasicInfo
         QuizEntity::class,
         QuestionEntity::class,
         AnswerOptionEntity::class,
-        QuizAttemptEntity::class
+        QuizAttemptEntity::class,
+        QuestionAttemptEntity::class
     ],
     views = [QuizBasicInfo::class],
-    version = 2,
+    version = 4,
     exportSchema = false,
 )
 abstract class StudyWiseDatabase : RoomDatabase() {

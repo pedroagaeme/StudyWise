@@ -10,7 +10,19 @@ import com.example.studywise.data.db.entity.QuizEntity
         SELECT Q.*,
         COALESCE(QA.lastAttemptedAt, Q.createdAt) as lastAttemptedAt,
         (SELECT COUNT(*) FROM question WHERE quizId = Q.id) as questionCount,
-        (SELECT AVG(score) FROM quiz_attempt WHERE quizId = Q.id) as averageScore,
+        (
+          SELECT AVG(score)
+          FROM (
+            SELECT
+              qa.quizAttemptId,
+              CAST(SUM(CASE WHEN ao.isCorrect THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) as score
+            FROM question_attempt qa
+            JOIN answer ao ON qa.selectedAnswerId = ao.id
+            JOIN quiz_attempt qat ON qa.quizAttemptId = qat.id
+            WHERE qat.quizId = Q.id
+            GROUP BY qa.quizAttemptId
+          )
+        ) as averageScore,
         QC.name as collectionName
         FROM quiz Q
         LEFT JOIN (

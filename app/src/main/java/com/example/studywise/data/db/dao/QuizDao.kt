@@ -2,6 +2,7 @@ package com.example.studywise.data.db.dao
 
 import androidx.room.*
 import com.example.studywise.data.db.entity.AnswerOptionEntity
+import com.example.studywise.data.db.entity.QuestionAttemptEntity
 import com.example.studywise.data.db.entity.QuestionEntity
 import com.example.studywise.data.db.entity.QuizAttemptEntity
 import com.example.studywise.data.db.entity.QuizCollectionEntity
@@ -17,13 +18,16 @@ interface QuizDao {
     suspend fun insert(quizCollection: QuizCollectionEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(quizAttempt: QuizAttemptEntity)
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(quiz: QuizEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(question: QuestionEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(quizAttempt: QuizAttemptEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(questionAttempt: QuestionAttemptEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(answerOptions: List<AnswerOptionEntity>)
@@ -44,6 +48,17 @@ interface QuizDao {
         return quiz.id
     }
 
+    @Transaction
+    suspend fun insertQuestionAttempt(
+        questionAttempt: QuestionAttemptEntity,
+        quizAttempt: QuizAttemptEntity
+    ){
+        insert(quizAttempt)
+        insert(questionAttempt)
+    }
+
+
+
     @Delete
     suspend fun delete(quiz: QuizEntity)
 
@@ -56,7 +71,6 @@ interface QuizDao {
 
     @Query("SELECT * FROM QuizBasicInfoView ORDER BY lastAttemptedAt DESC LIMIT :limit")
     fun getMostRecentQuizzes(limit: Int): Flow<List<QuizBasicInfo>>
-
 
     @Transaction
     @Query("""

@@ -133,14 +133,15 @@ fun QuestionCardPreview(
     AppTheme() {
         QuestionCard(
             state = QuestionCardUiState(
+                id = "1",
                 selectedAnswer = selectedAnswer, // Mocked selection
                 questionNumber = 1,
                 description = "What is the square root of 4?",
                 answers = listOf(
-                    AnswerUiState(text = "2", isCorrect = true),
-                    AnswerUiState(text = "4", isCorrect = false),
-                    AnswerUiState(text = "6", isCorrect = false),
-                    AnswerUiState(text = "8", isCorrect = false)
+                    AnswerUiState(id = "1", text = "2", isCorrect = true),
+                    AnswerUiState(id = "2", text = "4", isCorrect = false),
+                    AnswerUiState(id = "3", text = "6", isCorrect = false),
+                    AnswerUiState(id = "4", text = "8", isCorrect = false)
                 )
             ),
             modifier = Modifier
