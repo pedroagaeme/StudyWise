@@ -56,7 +56,10 @@ class AnswerQuizScreenViewModel @AssistedInject constructor(
                             text = answerData.text,
                             isCorrect = answerData.isCorrect
                         )
-                    }
+                    },
+                    selectedAnswer = null,
+                    isFlipped = false,
+                    isLoading = false
                 )
             }
 
@@ -79,21 +82,14 @@ class AnswerQuizScreenViewModel @AssistedInject constructor(
         when(action) {
             is AnswerQuizScreenAction.AnswerSelected -> {
                 _uiState.update { currentState ->
-                    currentState.copy(questionList = currentState.questionList.map {
-                        questionList ->
-                        if (questionList.questionNumber == action.questionIndex) {
-                            questionList.copy(
-                                answers = questionList.answers.map { answer ->
-                                    if (answer.text == action.answer.text) {
-                                        answer.copy(isSelected = !answer.isSelected)
-                                    } else {
-                                        answer
-                                    }
-                                }
-                            )
-                        }
-                        else questionList
-                    },
+                    currentState.copy(
+                        questionList = currentState.questionList.mapIndexed { index, question ->
+                            if (index == action.questionIndex) {
+                                question.copy(selectedAnswer = action.answer)
+                            } else {
+                                question
+                            }
+                        },
                         currentAttempt = currentState.currentAttempt.mapIndexed { index, _ ->
                             if (index == action.questionIndex) {
                                 action.answer.isCorrect

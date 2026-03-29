@@ -94,7 +94,7 @@ class QuizRepository @Inject constructor(
                             id = answerOptionMap["id"] as? String ?: return@mapNotNull null,
                             text = answerOptionMap["text"] as? String ?: return@mapNotNull null,
                             isCorrect
-                            = answerOptionMap["isCorrect"] as? Boolean ?: false
+                            = answerOptionMap["isCorrect"] as? Boolean ?: false,
                         )
                     } ?: emptyList()
                 )
