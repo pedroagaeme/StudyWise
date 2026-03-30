@@ -135,7 +135,6 @@ fun QuestionCardPreview(
             state = QuestionCardUiState(
                 id = "1",
                 selectedAnswer = selectedAnswer, // Mocked selection
-                questionNumber = 1,
                 description = "What is the square root of 4?",
                 answers = listOf(
                     AnswerUiState(id = "1", text = "2", isCorrect = true),

@@ -32,6 +32,15 @@ data class AnswerOptionDto(
 data class QuizAttemptDto(
     val id: String,
     val quizId: String,
-    val score: Int,
-    val createdAt: String
+    val score: Int?,
+    val createdAt: String,
+    val questionAttempts: List<QuestionAttemptDto>
 )
+
+data class QuestionAttemptDto(
+    val id: String,
+    val questionId: String,
+    val selectedAnswerId: String?,
+    val sortOrder: Int
+)
+

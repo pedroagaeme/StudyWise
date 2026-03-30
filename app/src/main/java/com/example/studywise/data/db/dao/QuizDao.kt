@@ -8,9 +8,11 @@ import com.example.studywise.data.db.entity.QuizAttemptEntity
 import com.example.studywise.data.db.entity.QuizCollectionEntity
 import com.example.studywise.data.db.entity.QuizEntity
 import com.example.studywise.data.db.relation.CollectionWithQuizzes
+import com.example.studywise.data.db.relation.QuizAttemptFullInfo
 import com.example.studywise.data.db.relation.QuizBasicInfo
 import com.example.studywise.data.db.relation.QuizWithQuestions
 import kotlinx.coroutines.flow.Flow
+import java.time.Instant
 
 @Dao
 interface QuizDao {
@@ -28,6 +30,9 @@ interface QuizDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(questionAttempt: QuestionAttemptEntity)
+
+    @Update
+    suspend fun update(questionAttempt: QuestionAttemptEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(answerOptions: List<AnswerOptionEntity>)
@@ -49,12 +54,16 @@ interface QuizDao {
     }
 
     @Transaction
-    suspend fun insertQuestionAttempt(
-        questionAttempt: QuestionAttemptEntity,
-        quizAttempt: QuizAttemptEntity
-    ){
+    suspend fun populateQuizAttempt(
+        quizAttempt: QuizAttemptEntity,
+        questionAttempts: List<QuestionAttemptEntity>
+    ) {
         insert(quizAttempt)
-        insert(questionAttempt)
+        questionAttempts.forEachIndexed { index, questionAttempt ->
+            insert(
+                questionAttempt
+            )
+        }
     }
 
 
@@ -78,4 +87,13 @@ interface QuizDao {
         FROM quiz_collection QC
     """)
     fun getCollectionsWithQuizzes(): Flow<List<CollectionWithQuizzes>>
+
+    @Query("SELECT * FROM quiz_attempt WHERE quizId = :quizId ORDER BY createdAt DESC LIMIT 1")
+    suspend fun getLastQuizAttemptWithQuestionsById(quizId: String): QuizAttemptFullInfo?
+
+
+    @Query("SELECT * FROM question_attempt WHERE quizAttemptId = :quizAttemptId ORDER BY sortOrder")
+    suspend fun getQuestionsAttemptedByQuizAttemptId(quizAttemptId: String): List<QuestionAttemptEntity>
+
+
 }

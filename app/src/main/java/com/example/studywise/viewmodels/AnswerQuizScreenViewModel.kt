@@ -1,5 +1,6 @@
 package com.example.studywise.viewmodels
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -50,7 +51,6 @@ class AnswerQuizScreenViewModel @AssistedInject constructor(
             val uiQuestionList = questions.mapIndexed { index, questionWithAnswers ->
                 QuestionCardUiState(
                     id = questionWithAnswers.id,
-                    questionNumber = index,
                     description = questionWithAnswers.description,
                     // Map the nested answers list
                     answers = questionWithAnswers.answerOptions.map { answerData ->
@@ -66,14 +66,47 @@ class AnswerQuizScreenViewModel @AssistedInject constructor(
                 )
             }
 
-            // 3. Update the UI state
+            // 3. See if lastAttempt is unfinished
+            val lastAttempt = repository.getLastQuizAttemptById(quizId)
+            if (lastAttempt != null) {
+                val firstUnansweredQuestion = lastAttempt.questionAttempts.find { it.selectedAnswerId == null }
+                if (firstUnansweredQuestion != null) {
+                    val orderedPile = lastAttempt.questionAttempts.mapNotNull {
+                        uiQuestionList.find { question -> question.id == it.questionId }
+                    }
+                    val targetIndex = orderedPile.indexOfFirst { it?.id == firstUnansweredQuestion.questionId}
+                    _uiState.update {
+                        it.copy(
+                            currentAttemptId = lastAttempt.id,
+                            questionList = orderedPile,
+                            targetIndex = targetIndex
+                        )
+                    }
+                    return@launch
+                }
+            }
+
+            // 4. Create new QuizAttempt with shuffled questions
+            val shuffleOrder = uiQuestionList.indices.shuffled()
+
+            val shuffleMap = mapOf(
+                *shuffleOrder.mapIndexed { index, order -> uiQuestionList[order].id to index }.toTypedArray()
+            )
+
+            val quizAttemptId = repository.createQuizAttempt(quizId, shuffleMap)
+
+            val initialQuestionList = shuffleOrder.map {
+                uiQuestionList[it]
+            }
+
             _uiState.update { currentState ->
                 currentState.copy(
-                    currentAttemptId = repository.generateNewId(),
-                    questionList = uiQuestionList,
-                    targetIndex = 0 // Reset or set initial index
+                    currentAttemptId = quizAttemptId,
+                    questionList = initialQuestionList ,
+                    targetIndex = 0
                 )
             }
+
         }
     }
 
@@ -97,11 +130,10 @@ class AnswerQuizScreenViewModel @AssistedInject constructor(
                 val quizAttemptId = _uiState.value.currentAttemptId
                 if (quizAttemptId != null && selectedAnswerId != null) {
                     viewModelScope.launch {
-                        repository.saveQuestionAttempt(
+                        repository.updateQuestionAttempt(
                             questionId = questionId,
                             selectedAnswerId = selectedAnswerId,
-                            quizAttemptId = quizAttemptId,
-                            quizId = quizId
+                            quizAttemptId = quizAttemptId
                         )
                     }
                     }

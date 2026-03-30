@@ -4,7 +4,6 @@ import com.example.studywise.ui.screens.answer_quiz.components.question_pile.que
 
 data class QuestionCardUiState(
     val id: String,
-    val questionNumber: Int = 0,
     val description: String = "",
     val answers: List<AnswerUiState> = emptyList(),
     val selectedAnswer: AnswerUiState? = null,

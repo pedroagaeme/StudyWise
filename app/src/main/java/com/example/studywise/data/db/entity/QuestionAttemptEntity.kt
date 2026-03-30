@@ -18,7 +18,7 @@ import androidx.room.Index
             entity = AnswerOptionEntity::class,
             parentColumns = ["id"],
             childColumns = ["selectedAnswerId"],
-            onDelete = ForeignKey.CASCADE
+            onDelete = ForeignKey.SET_NULL
         ),
         ForeignKey(
             entity = QuizAttemptEntity::class,
@@ -32,8 +32,9 @@ import androidx.room.Index
 data class QuestionAttemptEntity(
     @PrimaryKey val id: String,
     val questionId: String,
-    val selectedAnswerId: String,
+    val selectedAnswerId: String?,
     val quizAttemptId: String,
+    val sortOrder: Int,
     val createdAt: String,
     val updatedAt: String
 )

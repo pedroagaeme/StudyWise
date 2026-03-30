@@ -15,7 +15,7 @@ import com.example.studywise.data.db.entity.QuizEntity
           FROM (
             SELECT
               qa.quizAttemptId,
-              CAST(SUM(CASE WHEN ao.isCorrect THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) as score
+              SUM(CASE WHEN ao.isCorrect THEN 1 ELSE 0 END)  as score
             FROM question_attempt qa
             JOIN answer ao ON qa.selectedAnswerId = ao.id
             JOIN quiz_attempt qat ON qa.quizAttemptId = qat.id

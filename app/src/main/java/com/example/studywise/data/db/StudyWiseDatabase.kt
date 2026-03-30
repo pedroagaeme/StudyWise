@@ -23,7 +23,7 @@ import com.example.studywise.data.db.relation.QuizBasicInfo
         QuestionAttemptEntity::class
     ],
     views = [QuizBasicInfo::class],
-    version = 4,
+    version = 7,
     exportSchema = false,
 )
 abstract class StudyWiseDatabase : RoomDatabase() {

@@ -4,6 +4,7 @@ import android.util.Log
 import com.example.studywise.Appwrite
 import com.example.studywise.data.AnswerOptionDto
 import com.example.studywise.data.GenerateQuizResponse
+import com.example.studywise.data.QuestionAttemptDto
 import com.example.studywise.data.QuestionDto
 import com.example.studywise.data.QuizAttemptDto
 import com.example.studywise.data.QuizCollectionDto
@@ -20,6 +21,8 @@ import com.example.studywise.data.db.entity.QuizAttemptEntity
 import com.example.studywise.data.db.entity.QuizCollectionEntity
 import com.example.studywise.data.db.entity.QuizEntity
 import com.example.studywise.data.db.relation.CollectionWithQuizzes
+import com.example.studywise.data.db.relation.QuestionAttemptWithAnswer
+import com.example.studywise.data.db.relation.QuizAttemptFullInfo
 import com.example.studywise.data.db.relation.QuizBasicInfo
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -64,6 +67,26 @@ object QuizMappers {
             text = entity.text,
             isCorrect = entity.isCorrect,
         )
+
+    fun toQuizAttemptDto(entity: QuizAttemptFullInfo): QuizAttemptDto =
+        QuizAttemptDto(
+            id = entity.quizAttempt.id,
+            quizId = entity.quizAttempt.quizId,
+            createdAt = entity.quizAttempt.createdAt,
+            questionAttempts = entity.questionAttempts.map { toQuestionAttemptDto(it) }
+                .sortedBy { it.sortOrder },
+            score = entity.score
+
+        )
+
+    fun toQuestionAttemptDto(entity: QuestionAttemptWithAnswer): QuestionAttemptDto =
+        QuestionAttemptDto(
+            id = entity.questionAttempt.id,
+            questionId = entity.questionAttempt.questionId,
+            selectedAnswerId = entity.questionAttempt.selectedAnswerId,
+            sortOrder = entity.questionAttempt.sortOrder
+        )
+
 }
 
 class QuizRepository @Inject constructor(
@@ -240,30 +263,64 @@ class QuizRepository @Inject constructor(
         }
     }
 
-    suspend fun saveQuestionAttempt(
-        questionId: String,
-        selectedAnswerId: String,
-        quizAttemptId: String,
-        quizId: String
-    ) {
+    suspend fun createQuizAttempt(quizId: String, shuffleMap: Map<String, Int>): String? {
         val now = Instant.now().toString()
-        val questionAttempt = QuestionAttemptEntity(
-            id = generateNewId(),
-            questionId = questionId,
-            selectedAnswerId = selectedAnswerId,
-            quizAttemptId = quizAttemptId,
+        val quizAttempt = QuizAttemptEntity(
+            id = Appwrite.generateNewId(),
+            quizId = quizId,
             createdAt = now,
             updatedAt = now,
         )
-        val quizAttempt = QuizAttemptEntity(
-            id = quizAttemptId,
-            quizId = quizId,
-            createdAt = now,
+        val questions = quizDao.getQuizWithQuestionsById(quizId)?.questions ?: return null
+
+        try {
+            quizDao.populateQuizAttempt(
+                quizAttempt = quizAttempt,
+                questionAttempts = questions.mapIndexed { index, questionWithAnswers ->
+                    QuestionAttemptEntity(
+                        id = Appwrite.generateNewId(),
+                        questionId = questionWithAnswers.question.id,
+                        selectedAnswerId = null,
+                        quizAttemptId = quizAttempt.id,
+                        createdAt = now,
+                        updatedAt = now,
+                        sortOrder = shuffleMap[questionWithAnswers.question.id] ?: index
+                    )
+                }
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return null
+        }
+        return quizAttempt.id
+    }
+    suspend fun updateQuestionAttempt(
+        questionId: String,
+        selectedAnswerId: String,
+        quizAttemptId: String,
+    ) {
+        val now = Instant.now().toString()
+
+        val questionAttemptTemp = quizDao.getQuestionsAttemptedByQuizAttemptId(quizAttemptId).find {
+            it.questionId == questionId
+        }
+
+        val questionAttempt = questionAttemptTemp?.copy(
+            selectedAnswerId = selectedAnswerId,
             updatedAt = now
         )
-        quizDao.insertQuestionAttempt(
-            questionAttempt = questionAttempt,
-            quizAttempt = quizAttempt
+
+        questionAttempt ?: return
+
+        quizDao.update(
+            questionAttempt = questionAttempt
         )
+    }
+
+    suspend fun getLastQuizAttemptById(quizId: String): QuizAttemptDto?{
+        val quizAttempt = quizDao.getLastQuizAttemptWithQuestionsById(quizId)
+        return quizAttempt?.let {
+            QuizMappers.toQuizAttemptDto(it)
+        }
     }
 }
