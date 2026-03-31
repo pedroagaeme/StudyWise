@@ -1,5 +1,12 @@
 package com.example.studywise.ui.screens.answer_quiz.components.question_pile
 
+import android.util.Log
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationSpec
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -27,6 +34,8 @@ import com.example.studywise.ui.theme.LogoGreen
 import com.example.studywise.ui.theme.LogoOrange
 import com.example.studywise.ui.theme.LogoPink
 import com.example.studywise.ui.theme.LogoTeal
+import kotlin.math.abs
+import kotlin.math.max
 import kotlin.math.min
 
 // Since we want to simulate the feeling of a pile of cards,
@@ -93,17 +102,47 @@ fun QuestionPile(
     val paddedQuestionCount = questionCount.toString().padStart(2, '0')
     val paddedQuestionNumber = currentQuestionNumber.toString().padStart(2, '0')
 
+    val targetProgress = if (questionCount == 0) 0f else currentQuestionNumber.toFloat() / questionCount
     val progress by animateFloatAsState(
-        targetValue = if (questionCount == 0) 0f else currentQuestionNumber.toFloat() / questionCount,
+        targetValue = targetProgress,
         animationSpec = tween(600)
     )
-
 
     // Animate cards whenever a new index value is provided
-    val animatedCurrentIndex by animateFloatAsState(
-        targetValue = state.targetIndex.toFloat(),
-        animationSpec = tween(600)
-    )
+    val animatedCurrentIndex = remember { Animatable(state.targetIndex.toFloat()) }
+
+    LaunchedEffect(state.targetIndex) {
+        val current = animatedCurrentIndex.value.toInt()
+        val target = state.targetIndex
+        val stepDuration = 200
+
+        if (target > current) {
+            // Step forward one by one
+            for (i in (current + 1)..target) {
+                animatedCurrentIndex.animateTo(
+                    targetValue = i.toFloat(),
+                    animationSpec = tween(
+                        durationMillis = if (i == target) 600 else stepDuration,
+                        easing = if (i == target) FastOutSlowInEasing else FastOutLinearInEasing
+                    ),
+
+                )
+            }
+        } else if (target < current) {
+            // Step backward one by one
+            for (i in (current - 1) downTo target) {
+                animatedCurrentIndex.animateTo(
+                    targetValue = i.toFloat(),
+                    animationSpec = tween(
+                        durationMillis = if (i == target) 600 else stepDuration,
+                        easing = if (i == target) FastOutSlowInEasing else LinearEasing
+                    )
+                )
+            }
+        }
+    }
+
+    val currentIndexValue = animatedCurrentIndex.value
     Column(modifier = modifier) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -131,7 +170,7 @@ fun QuestionPile(
             // Animate only the cards that should be visible
             // (the one that gets thrown away and the next 4 in line)
             state.questionList.forEachIndexed { index, questionCardState ->
-                val distance = animatedCurrentIndex - index.toFloat()
+                val distance = currentIndexValue - index.toFloat()
                 if (distance in -4f..1f) {
                     CardInPile(
                         state = questionCardState,
