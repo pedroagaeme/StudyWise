@@ -26,12 +26,13 @@ import com.example.studywise.data.QuizCollectionDto
 
 @Composable
 fun CollectionHeader(
+    modifier: Modifier = Modifier,
     collection: QuizCollectionDto,
     progress: Float,
     onExpandClick: () -> Unit
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },

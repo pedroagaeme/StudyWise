@@ -11,29 +11,47 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.studywise.data.QuizDto
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.studywise.ui.components.quiz_card.QuizCard
 import com.example.studywise.ui.theme.AppTheme
+import com.example.studywise.viewmodels.SearchScreenViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: SearchScreenViewModel = hiltViewModel(),
+    innerPadding: PaddingValues,
+    pushAnswerQuizRoute: (String) -> Unit
 ) {
-    var searchQuery by remember { mutableStateOf("") }
+    val uiState by viewModel.uiState.collectAsState()
+    val onAction = viewModel::onAction
 
-    val allQuizzes = remember {
-        emptyList<QuizDto>()
-    }
-
-    val filteredQuizzes = remember(searchQuery) {
-        if (searchQuery.isEmpty()) {
-            allQuizzes
-        } else {
-            allQuizzes.filter { it.title.contains(searchQuery, ignoreCase = true) }
+    LaunchedEffect(uiState.pendingEffect) {
+        uiState.pendingEffect?.let { effect ->
+            when (effect) {
+                is SearchScreenEffect.NavigateToAnswerQuiz -> pushAnswerQuizRoute(effect.quizId)
+            }
+            viewModel.effectConsumed()
         }
     }
 
+    SearchScreenContent(
+        modifier = modifier,
+        innerPadding = innerPadding,
+        state = uiState,
+        onAction = onAction
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SearchScreenContent(
+    modifier: Modifier = Modifier,
+    innerPadding: PaddingValues = PaddingValues(0.dp),
+    state: SearchScreenUiState,
+    onAction: (SearchScreenAction) -> Unit
+) {
     Surface(
         modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.surfaceContainerLowest
@@ -45,8 +63,8 @@ fun SearchScreen(
                 CenterAlignedTopAppBar(
                     title = {
                         OutlinedTextField(
-                            value = searchQuery,
-                            onValueChange = { searchQuery = it },
+                            value = state.searchQuery,
+                            onValueChange = { onAction(SearchScreenAction.OnSearchQueryChange(it)) },
                             modifier = Modifier
                                 .fillMaxWidth(),
                             placeholder = { Text("Search your quizzes...") },
@@ -69,7 +87,7 @@ fun SearchScreen(
                         containerColor = MaterialTheme.colorScheme.surface
                     )
                 )
-                Divider(
+                HorizontalDivider(
                     color = MaterialTheme.colorScheme.outlineVariant,
                     thickness = 1.dp
                 )
@@ -78,11 +96,18 @@ fun SearchScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = 16.dp),
+                contentPadding = PaddingValues(
+                    top = 16.dp,
+                    bottom = innerPadding.calculateBottomPadding() + 16.dp
+                ),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(filteredQuizzes) { quiz ->
-                    QuizCard(quiz = quiz)
+                items(state.filteredQuizzes, key = { it.id }) { quiz ->
+                    QuizCard(
+                        quiz = quiz,
+                        onClick = { onAction(SearchScreenAction.OnQuizCardClick(quiz.id)) }
+                    )
                 }
             }
         }
@@ -93,6 +118,9 @@ fun SearchScreen(
 @Composable
 fun SearchScreenPreview() {
     AppTheme {
-        SearchScreen()
+        SearchScreenContent(
+            state = SearchScreenUiState(),
+            onAction = {}
+        )
     }
 }

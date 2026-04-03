@@ -323,4 +323,12 @@ class QuizRepository @Inject constructor(
             QuizMappers.toQuizAttemptDto(it)
         }
     }
+
+    fun getFilteredQuizzes(query: String): Flow<List<QuizDto>> {
+        return quizDao.getFilteredQuizzes(query).map { quizList ->
+            quizList.map { quizInfo ->
+                QuizMappers.toQuizDto(quizInfo)
+            }
+        }
+    }
 }

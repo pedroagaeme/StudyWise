@@ -88,6 +88,8 @@ interface QuizDao {
     """)
     fun getCollectionsWithQuizzes(): Flow<List<CollectionWithQuizzes>>
 
+    @Query("SELECT * FROM QuizBasicInfoView WHERE title LIKE '%' || :query || '%' OR collectionName LIKE '%' || :query || '%'")
+    fun getFilteredQuizzes(query: String): Flow<List<QuizBasicInfo>>
     @Query("SELECT * FROM quiz_attempt WHERE quizId = :quizId ORDER BY createdAt DESC LIMIT 1")
     suspend fun getLastQuizAttemptWithQuestionsById(quizId: String): QuizAttemptFullInfo?
 

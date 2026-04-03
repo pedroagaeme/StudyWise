@@ -13,10 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.max
-import androidx.compose.ui.unit.min
 import com.example.studywise.ui.screens.tabs.home.HomeScreen
 import com.example.studywise.ui.screens.tabs.components.MainNavigationItem
 import com.example.studywise.ui.screens.tabs.search.SearchScreen
@@ -33,53 +30,59 @@ fun MainScreen(
         containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
         contentWindowInsets = WindowInsets.safeContent,
         bottomBar = {
-            BottomAppBar(
-                contentPadding = PaddingValues(horizontal = 4.dp),
-                containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                contentColor = contentColorFor(MaterialTheme.colorScheme.surfaceContainer),
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+            Column {
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                    thickness = 1.dp
+                )
+                BottomAppBar(
+                    contentPadding = PaddingValues(horizontal = 4.dp),
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = contentColorFor(MaterialTheme.colorScheme.surface)
                 ) {
-                    MainNavigationItem(
-                        icon = Icons.Rounded.Home,
-                        label = "Home",
-                        isSelected = selectedTab == 0,
-                        onClick = { selectedTab = 0 },
-                        modifier = Modifier.weight(1f)
-                    )
-                    MainNavigationItem(
-                        icon = Icons.Rounded.Search,
-                        label = "Search",
-                        isSelected = selectedTab == 1,
-                        onClick = { selectedTab = 1 },
-                        modifier = Modifier.weight(1f)
-                    )
-                    FloatingActionButton(
-                        onClick = pushCreateQuizRoute,
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        shape = CircleShape,
-                        elevation = FloatingActionButtonDefaults.elevation(0.dp),
-                        modifier = Modifier.padding(horizontal = 4.dp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Filled.Add, "Create")
+                        MainNavigationItem(
+                            icon = Icons.Rounded.Home,
+                            label = "Home",
+                            isSelected = selectedTab == 0,
+                            onClick = { selectedTab = 0 },
+                            modifier = Modifier.weight(1f)
+                        )
+                        MainNavigationItem(
+                            icon = Icons.Rounded.Search,
+                            label = "Search",
+                            isSelected = selectedTab == 1,
+                            onClick = { selectedTab = 1 },
+                            modifier = Modifier.weight(1f)
+                        )
+                        FloatingActionButton(
+                            onClick = pushCreateQuizRoute,
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                            shape = CircleShape,
+                            elevation = FloatingActionButtonDefaults.elevation(0.dp),
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        ) {
+                            Icon(Icons.Filled.Add, "Create")
+                        }
+                        MainNavigationItem(
+                            icon = Icons.Rounded.BarChart,
+                            label = "Stats",
+                            isSelected = selectedTab == 2,
+                            onClick = { selectedTab = 2 },
+                            modifier = Modifier.weight(1f)
+                        )
+                        MainNavigationItem(
+                            icon = Icons.Rounded.Settings,
+                            label = "Config",
+                            isSelected = selectedTab == 3,
+                            onClick = { selectedTab = 3 },
+                            modifier = Modifier.weight(1f)
+                        )
                     }
-                    MainNavigationItem(
-                        icon = Icons.Rounded.BarChart,
-                        label = "Stats",
-                        isSelected = selectedTab == 2,
-                        onClick = { selectedTab = 2 },
-                        modifier = Modifier.weight(1f)
-                    )
-                    MainNavigationItem(
-                        icon = Icons.Rounded.Settings,
-                        label = "Config",
-                        isSelected = selectedTab == 3,
-                        onClick = { selectedTab = 3 },
-                        modifier = Modifier.weight(1f)
-                    )
                 }
             }
         }
@@ -91,7 +94,7 @@ fun MainScreen(
 
             when (selectedTab) {
                 0 -> HomeScreen(innerPadding = innerPadding, pushAnswerQuizRoute = pushAnswerQuizRoute)
-                1 -> SearchScreen()
+                1 -> SearchScreen(innerPadding = innerPadding, pushAnswerQuizRoute = pushAnswerQuizRoute)
                 2 -> PlaceholderScreen()
                 3 -> PlaceholderScreen()
             }
@@ -113,4 +116,3 @@ fun MainScreenPreview() {
         MainScreen()
     }
 }
-

@@ -63,6 +63,7 @@ fun HomeScreenContent(
     state: HomeScreenUiState,
     onAction: (HomeScreenAction) -> Unit,
 ) {
+    val horizontalPaddingModifier = Modifier.padding(horizontal = 16.dp)
     Surface(
         modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.surfaceContainerLowest
@@ -73,25 +74,23 @@ fun HomeScreenContent(
             contentPadding = PaddingValues(
                 bottom = innerPadding.calculateBottomPadding() + 8.dp,
                 top = innerPadding.calculateTopPadding() + 8.dp,
-                start = 16.dp,
-                end = 16.dp
             ),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Recent Section
             item {
-                SectionHeader("Recent")
+                SectionHeader("Recent", modifier = horizontalPaddingModifier)
             }
             item {
                 RecentQuizzesBlock(
                     quizzes = state.recentQuizzes,
-                    onAction = onAction
+                    onAction = onAction,
                 )
             }
 
             // Collections Section
             item {
-                SectionHeader("Collections")
+                SectionHeader("Collections", modifier = horizontalPaddingModifier)
             }
 
             state.collections.forEach { collection ->
@@ -120,7 +119,6 @@ fun CollectionExpandableBlock(
     modifier: Modifier = Modifier,
     onAction: (HomeScreenAction) -> Unit,
     cardHeight: Int = 100,
-    cardSpacing: Int = 12,
     expandingSpeed: Float = 1.5f,
     contentTransitionDuration: Int = 500
 ) {
@@ -132,8 +130,9 @@ fun CollectionExpandableBlock(
     val scrollOffset = remember { mutableFloatStateOf(0f) }
 
     // Animate vertical space for quizzes
+    val cardVerticalPaddingValue = 6
     val quizzes = collection.quizzes
-    val maxHeight = (quizzes.size * cardHeight + (quizzes.size) * cardSpacing).dp
+    val maxHeight = (quizzes.size * cardHeight + (quizzes.size) * 2 * cardVerticalPaddingValue).dp
     val animatedHeight = if (progress > 0f) ((maxHeight * progress * expandingSpeed).coerceIn(0.dp, maxHeight)) else 0.dp
 
     Column(
@@ -146,11 +145,12 @@ fun CollectionExpandableBlock(
             })
     ) {
         CollectionHeader(
+            modifier = Modifier.padding(horizontal = 16.dp),
             collection = collection,
             progress = progress,
             onExpandClick = onExpandClick
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8 .dp))
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -162,16 +162,19 @@ fun CollectionExpandableBlock(
             ) {
                 quizzes.forEachIndexed { quizIndex, quiz ->
                     AnimatedQuizCard(
-                        quiz = quiz,
+                        modifier = Modifier.padding(start = 8.dp),
+                        quiz = quiz.copy(
+                            collectionName = null
+                        ),
                         progress = progress,
                         quizIndex = quizIndex,
                         totalQuizzes = quizzes.count(),
                         cardHeight = cardHeight,
+                        cardPadding = PaddingValues(horizontal = 16.dp, vertical = cardVerticalPaddingValue.dp),
                         onQuizCardClick = {
                             onAction(HomeScreenAction.OnQuizCardClick(quiz.id))
                         }
                     )
-                    Spacer(modifier = Modifier.height(cardSpacing.dp))
                 }
             }
         }
@@ -183,7 +186,6 @@ fun RecentQuizzesBlock(
     quizzes: List<QuizDto>,
     modifier: Modifier = Modifier,
     cardHeight: Int = 100,
-    cardSpacing: Int = 12,
     animationDuration: Int = 600,
     onAction: (HomeScreenAction) -> Unit
 ) {
@@ -209,7 +211,6 @@ fun RecentQuizzesBlock(
                     onAction(HomeScreenAction.OnQuizCardClick(quiz.id))
                 }
             )
-            Spacer(modifier = Modifier.height(cardSpacing.dp))
         }
     }
 }
@@ -222,6 +223,7 @@ fun AnimatedQuizCard(
     totalQuizzes: Int = 1,
     speedDifference: Float = 0.15f,
     cardHeight: Int = 100,
+    cardPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
     onQuizCardClick: () -> Unit
 ) {
     val incrementalSpeed = (totalQuizzes - 1f) * speedDifference
@@ -236,7 +238,10 @@ fun AnimatedQuizCard(
             quiz.copy(
                 averageScore = if (quiz.averageScore == null) null else quiz.averageScore * slideProgress,
             ),
-            Modifier.height(cardHeight.dp),
+            Modifier
+                .padding(cardPadding)
+                .height(cardHeight.dp)
+            ,
             onClick = onQuizCardClick
         )
     }
