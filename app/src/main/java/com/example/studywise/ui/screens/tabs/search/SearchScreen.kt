@@ -98,8 +98,8 @@ fun SearchScreenContent(
                     .fillMaxSize()
                     .padding(horizontal = 16.dp),
                 contentPadding = PaddingValues(
-                    top = 16.dp,
-                    bottom = innerPadding.calculateBottomPadding() + 16.dp
+                    top = 8.dp,
+                    bottom = innerPadding.calculateBottomPadding() + 8.dp
                 ),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
