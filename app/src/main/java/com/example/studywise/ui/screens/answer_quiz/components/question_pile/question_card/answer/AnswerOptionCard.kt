@@ -2,6 +2,7 @@ package com.example.studywise.ui.screens.answer_quiz.components.question_pile.qu
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,11 +14,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.innerShadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import com.example.studywise.ui.screens.answer_quiz.AnswerQuizScreenAction
 import com.example.studywise.ui.theme.CardSurfaceColor
@@ -34,6 +38,7 @@ fun AnswerOptionCard(
     questionColor: Color,
     label: String = "A",
 ) {
+    val answerShape = RoundedCornerShape(12.dp)
 
     // Logic for answer feedback
     val isAnswered = selectedAnswer != null
@@ -110,15 +115,29 @@ fun AnswerOptionCard(
     Button(
         onClick = { onClick() },
         enabled = !isAnswered, // Automatically disables interaction once answered
-        shape = RoundedCornerShape(12.dp),
+        shape = answerShape,
         colors = ButtonDefaults.buttonColors(
-            containerColor = animatedContainerColor,
-            disabledContainerColor = animatedContainerColor, // Keeps our feedback color visible
+            // Background is drawn in modifier so innerShadow can be painted over it.
+            containerColor = Color.Transparent,
+            disabledContainerColor = Color.Transparent,
             contentColor = CardTextColor,
             disabledContentColor = CardTextColor,
         ),
         modifier = Modifier
-            .fillMaxWidth(),
+            .fillMaxWidth()
+            .background(
+                color = animatedContainerColor,
+                shape = answerShape
+            )
+            .innerShadow(
+                shape = answerShape,
+                shadow = Shadow(
+                    radius = 4.dp,
+                    spread = 0.dp,
+                    color = Color(0x14000000),
+                    offset = DpOffset(1.dp, 1.dp)
+                )
+            ),
         contentPadding = PaddingValues(16.dp)
     ) {
         Text(

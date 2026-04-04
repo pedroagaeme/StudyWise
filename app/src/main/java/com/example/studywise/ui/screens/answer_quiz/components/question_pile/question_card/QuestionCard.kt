@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.defaultMinSize
@@ -14,20 +15,25 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Autorenew
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.innerShadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import com.example.studywise.ui.screens.answer_quiz.AnswerQuizScreenAction
 import com.example.studywise.ui.screens.answer_quiz.components.question_pile.question_card.answer.AnswerOptionCard
@@ -199,7 +205,8 @@ private fun QuestionCardFront(
             QuestionNumberBadge(questionNumber = questionNumber, questionColor = questionColor)
             if (canToggleSide) {
                 SideToggleIconButton(
-                    onClick = { onAction(AnswerQuizScreenAction.FlipToggled(questionNumber - 1)) }
+                    onClick = { onAction(AnswerQuizScreenAction.FlipToggled(questionNumber - 1)) },
+                    label = "See more options"
                 )
             }
         }
@@ -236,7 +243,8 @@ private fun QuestionCardBack(
             verticalAlignment = Alignment.CenterVertically
         ) {
             SideToggleIconButton(
-                onClick = { onAction(AnswerQuizScreenAction.FlipToggled(questionNumber - 1)) }
+                onClick = { onAction(AnswerQuizScreenAction.FlipToggled(questionNumber - 1)) },
+                label = "See front side"
             )
         }
         answers.forEach { indexed ->
@@ -255,18 +263,41 @@ private fun QuestionCardBack(
 @Composable
 private fun SideToggleIconButton(
     onClick: () -> Unit,
+    label: String,
     modifier: Modifier = Modifier
 ) {
-    IconButton(
+    Button(
         onClick = onClick,
-        modifier = modifier
+        modifier = modifier,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color.Transparent,
+            contentColor = CardSurfaceColor
+        ),
+        shape = RoundedCornerShape(8.dp),
+        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
     ) {
-        Icon(
-            modifier = Modifier.size(32.dp),
-            imageVector = Icons.Rounded.Autorenew,
-            contentDescription = "Switch card side",
-            tint = CardSurfaceColor
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = label,
+                color = CardSurfaceColor,
+                style = MaterialTheme.typography.labelLarge.copy(
+                    shadow = androidx.compose.ui.graphics.Shadow(
+                        color = Color(0x33000000),
+                        offset = Offset(1f, 1f),
+                        blurRadius = 8f
+                    )
+                )
+            )
+            Icon(
+                modifier = Modifier.size(24.dp),
+                imageVector = Icons.Rounded.Autorenew,
+                contentDescription = "Switch card side",
+                tint = CardSurfaceColor
+            )
+        }
     }
 }
 
@@ -306,6 +337,15 @@ private fun QuestionNumberBadge(
         modifier = Modifier
             .size(48.dp)
             .background(CardSurfaceColor, shape = RoundedCornerShape(12.dp))
+            .innerShadow(
+                shape = RoundedCornerShape(12.dp),
+                shadow = Shadow(
+                    radius = 4.dp,
+                    spread = 2.dp,
+                    color = Color(0x14000000),
+                    offset = DpOffset(1.dp, 1.dp)
+                )
+            )
     ) {
         Text(
             text = paddedQuestionNumber,
@@ -328,6 +368,15 @@ private fun QuestionPromptBlock(
             .background(
                 color = CardSurfaceColor,
                 shape = RoundedCornerShape(12.dp)
+            )
+            .innerShadow(
+                shape = RoundedCornerShape(12.dp),
+                shadow = Shadow(
+                    radius = 4.dp,
+                    spread = 2.dp,
+                    color = Color(0x14000000),
+                    offset = DpOffset(1.dp, 1.dp)
+                )
             )
             .defaultMinSize(minHeight = 140.dp)
             .padding(20.dp)
