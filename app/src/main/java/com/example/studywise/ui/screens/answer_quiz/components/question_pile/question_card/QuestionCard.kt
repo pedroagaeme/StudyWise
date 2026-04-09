@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
@@ -43,7 +44,9 @@ import com.example.studywise.ui.theme.CardTextColor
 import kotlin.math.roundToInt
 
 private const val CARD_ASPECT_RATIO = 0.55f
-private val CARD_PADDING = 20.dp
+private val CARD_PADDING_HORIZONTAL = 20.dp
+private val CARD_PADDING_TOP = 20.dp
+private val CARD_PADDING_BOTTOM = 32.dp
 private val BLOCK_SPACING = 20.dp
 
 private enum class MeasureSlot {
@@ -80,10 +83,12 @@ fun QuestionCard(
             return@SubcomposeLayout layout(0, 0) {}
         }
 
-        val paddingPx = CARD_PADDING.roundToPx()
+        val paddingHorizontalPx = CARD_PADDING_HORIZONTAL.roundToPx()
+        val paddingTopPx = CARD_PADDING_TOP.roundToPx()
+        val paddingBottomPx = CARD_PADDING_BOTTOM.roundToPx()
         val spacingPx = BLOCK_SPACING.roundToPx()
-        val innerMaxHeight = (height - (paddingPx * 2)).coerceAtLeast(0)
-        val innerMaxWidth = (width - (paddingPx * 2)).coerceAtLeast(0)
+        val innerMaxHeight = (height - paddingTopPx - paddingBottomPx).coerceAtLeast(0)
+        val innerMaxWidth = (width - (paddingHorizontalPx * 2)).coerceAtLeast(0)
 
         val childConstraints = Constraints(
             minWidth = 0,
@@ -197,29 +202,90 @@ private fun QuestionCardFront(
         modifier = modifier,
         questionColor = questionColor
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            QuestionNumberBadge(questionNumber = questionNumber, questionColor = questionColor)
-            if (canToggleSide) {
-                SideToggleIconButton(
-                    onClick = { onAction(AnswerQuizScreenAction.FlipToggled(questionNumber - 1)) },
-                    label = "See more options"
-                )
+        SubcomposeLayout(modifier = Modifier.fillMaxSize()) { constraints ->
+            val availableWidth = constraints.maxWidth
+            val availableHeight = constraints.maxHeight
+
+            if (availableWidth <= 0 || availableHeight <= 0) {
+                return@SubcomposeLayout layout(0, 0) {}
             }
-        }
-        QuestionPromptBlock(description = description)
-        answers.forEach { indexed ->
-            AnswerOptionCard(
-                onAction = onAction,
-                questionNumber = questionNumber,
-                state = indexed.answer,
-                selectedAnswer = selectedAnswer,
-                questionColor = questionColor,
-                label = ('A' + indexed.originalIndex).toString()
+
+            val childConstraints = Constraints(
+                minWidth = 0,
+                maxWidth = availableWidth,
+                minHeight = 0,
+                maxHeight = Constraints.Infinity
             )
+
+            val rowPlaceable = subcompose("front_row") {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    QuestionNumberBadge(questionNumber = questionNumber, questionColor = questionColor)
+                    if (canToggleSide) {
+                        SideToggleIconButton(
+                            onClick = { onAction(AnswerQuizScreenAction.FlipToggled(questionNumber - 1)) },
+                            label = "See more options"
+                        )
+                    }
+                }
+            }.first().measure(childConstraints)
+
+            val answerPlaceables = answers.map { indexed ->
+                subcompose("front_answer_${indexed.originalIndex}") {
+                    AnswerOptionCard(
+                        onAction = onAction,
+                        questionNumber = questionNumber,
+                        state = indexed.answer,
+                        selectedAnswer = selectedAnswer,
+                        questionColor = questionColor,
+                        label = ('A' + indexed.originalIndex).toString()
+                    )
+                }.first().measure(childConstraints)
+            }
+
+            val promptMeasurePlaceable = subcompose("front_prompt_measure") {
+                QuestionPromptBlock(description = description)
+            }.first().measure(childConstraints)
+            
+            val spacingPx = BLOCK_SPACING.roundToPx()
+            val usedWithoutPrompt = rowPlaceable.height + answerPlaceables.sumOf { it.height } + spacingPx * (answers.size + 1)
+            val promptHeight = maxOf(promptMeasurePlaceable.height, (availableHeight - usedWithoutPrompt).coerceAtLeast(0))
+
+            val promptPlaceable = subcompose("front_prompt") {
+                QuestionPromptBlock(
+                    description = description,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(0.dp)
+                )
+            }.first().measure(
+                Constraints(
+                    minWidth = 0,
+                    maxWidth = availableWidth,
+                    minHeight = promptHeight,
+                    maxHeight = promptHeight
+                )
+            )
+
+            val totalHeight = rowPlaceable.height + promptPlaceable.height + answerPlaceables.sumOf { it.height } + spacingPx * (answers.size + 1)
+            val layoutHeight = totalHeight.coerceAtMost(availableHeight)
+
+            layout(availableWidth, layoutHeight) {
+                var y = 0
+                rowPlaceable.placeRelative(0, y)
+                y += rowPlaceable.height + spacingPx
+
+                promptPlaceable.placeRelative(0, y)
+                y += promptPlaceable.height + spacingPx
+
+                answerPlaceables.forEach { placeable ->
+                    placeable.placeRelative(0, y)
+                    y += placeable.height + spacingPx
+                }
+            }
         }
     }
 }
@@ -305,7 +371,7 @@ private fun SideToggleIconButton(
 private fun QuestionCardScaffold(
     questionColor: Color,
     modifier: Modifier = Modifier,
-    content: @Composable () -> Unit
+    content: @Composable ColumnScope.() -> Unit
 ) {
     Card(
         elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
@@ -318,7 +384,12 @@ private fun QuestionCardScaffold(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(CARD_PADDING),
+                    .padding(
+                        start = CARD_PADDING_HORIZONTAL,
+                        top = CARD_PADDING_TOP,
+                        end = CARD_PADDING_HORIZONTAL,
+                        bottom = CARD_PADDING_BOTTOM
+                    ),
             verticalArrangement = Arrangement.spacedBy(BLOCK_SPACING)
         ) {
             content()
@@ -359,12 +430,12 @@ private fun QuestionNumberBadge(
 
 @Composable
 private fun QuestionPromptBlock(
-    description: String
+    description: String,
+    modifier: Modifier = Modifier
 ) {
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = modifier
             .background(
                 color = CardSurfaceColor,
                 shape = RoundedCornerShape(12.dp)

@@ -133,7 +133,7 @@ fun AnswerOptionCard(
                 shape = answerShape,
                 shadow = Shadow(
                     radius = 4.dp,
-                    spread = 0.dp,
+                    spread = 2.dp,
                     color = Color(0x14000000),
                     offset = DpOffset(1.dp, 1.dp)
                 )
