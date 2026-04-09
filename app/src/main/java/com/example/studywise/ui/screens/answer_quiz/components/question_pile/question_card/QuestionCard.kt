@@ -1,5 +1,7 @@
 package com.example.studywise.ui.screens.answer_quiz.components.question_pile.question_card
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,12 +25,16 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.innerShadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.text.font.FontWeight
@@ -41,6 +47,7 @@ import com.example.studywise.ui.screens.answer_quiz.components.question_pile.que
 import com.example.studywise.ui.screens.answer_quiz.components.question_pile.question_card.answer.AnswerUiState
 import com.example.studywise.ui.theme.CardSurfaceColor
 import com.example.studywise.ui.theme.CardTextColor
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 private const val CARD_ASPECT_RATIO = 0.55f
@@ -52,8 +59,7 @@ private val BLOCK_SPACING = 20.dp
 private enum class MeasureSlot {
     NumberBadge,
     QuestionBlock,
-    FrontCard,
-    BackCard
+    FlippableCard
 }
 
 private data class IndexedAnswer(
@@ -70,6 +76,14 @@ fun QuestionCard(
     questionNumber: Int,
 ) {
     val indexedAnswers = state.answers.mapIndexed { index, answer -> IndexedAnswer(index, answer) }
+    val flipProgress by animateFloatAsState(
+        targetValue = if (state.isFlipped) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = 500,
+            easing = LinearOutSlowInEasing
+        ),
+        label = "question_card_flip_progress"
+    )
 
     SubcomposeLayout(
         modifier = modifier
@@ -131,37 +145,50 @@ fun QuestionCard(
         val hasBackSide = backAnswers.isNotEmpty()
 
         val fixedCardConstraints = Constraints.fixed(width, height)
+        val effectiveFlipProgress = if (hasBackSide) flipProgress else 0f
+        val depthPulse = (1f - abs((effectiveFlipProgress * 2f) - 1f)).coerceIn(0f, 1f)
+        val flipScale = 1f + (0.15f * depthPulse)
 
-        val frontPlaceable = subcompose(MeasureSlot.FrontCard) {
-            QuestionCardFront(
-                description = state.description,
-                selectedAnswer = state.selectedAnswer,
-                onAction = onAction,
-                questionColor = questionColor,
-                questionNumber = questionNumber,
-                answers = frontAnswers,
-                canToggleSide = hasBackSide
+        val flippablePlaceable = subcompose(MeasureSlot.FlippableCard) {
+            DoubleSidedComposable(
+                rotationX = 0f,
+                rotationY = -180f * effectiveFlipProgress,
+                rotationZ = 0f,
+                cameraDistance = 28.dp.toPx(),
+                flipType = FLIPTYPE.VERTICAL,
+                front = {
+                    QuestionCardFront(
+                        description = state.description,
+                        selectedAnswer = state.selectedAnswer,
+                        onAction = onAction,
+                        questionColor = questionColor,
+                        questionNumber = questionNumber,
+                        answers = frontAnswers,
+                        canToggleSide = hasBackSide,
+                        modifier = Modifier.graphicsLayer {
+                            scaleX = flipScale
+                            scaleY = flipScale
+                        }
+                    )
+                },
+                back = {
+                    QuestionCardBack(
+                        selectedAnswer = state.selectedAnswer,
+                        onAction = onAction,
+                        questionColor = questionColor,
+                        questionNumber = questionNumber,
+                        answers = backAnswers,
+                        modifier = Modifier.graphicsLayer {
+                            scaleX = flipScale
+                            scaleY = flipScale
+                        }
+                    )
+                }
             )
         }.first().measure(fixedCardConstraints)
 
-        val backPlaceable = if (backAnswers.isNotEmpty()) {
-            subcompose(MeasureSlot.BackCard) {
-                QuestionCardBack(
-                    selectedAnswer = state.selectedAnswer,
-                    onAction = onAction,
-                    questionColor = questionColor,
-                    questionNumber = questionNumber,
-                    answers = backAnswers
-                )
-            }.first().measure(fixedCardConstraints)
-        } else {
-            null
-        }
-
-        val showBack = state.isFlipped && backPlaceable != null
-        val active = if (showBack) backPlaceable else frontPlaceable
-        layout(active.width, active.height) {
-            active.placeRelative(0, 0)
+        layout(flippablePlaceable.width, flippablePlaceable.height) {
+            flippablePlaceable.placeRelative(0, 0)
         }
     }
 }
