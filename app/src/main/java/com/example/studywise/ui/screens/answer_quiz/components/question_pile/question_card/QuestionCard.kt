@@ -1,6 +1,5 @@
 package com.example.studywise.ui.screens.answer_quiz.components.question_pile.question_card
 
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -25,7 +24,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -74,16 +72,9 @@ fun QuestionCard(
     modifier: Modifier = Modifier,
     questionColor: Color,
     questionNumber: Int,
+    flipProgress: Float = 0f,
 ) {
     val indexedAnswers = state.answers.mapIndexed { index, answer -> IndexedAnswer(index, answer) }
-    val flipProgress by animateFloatAsState(
-        targetValue = if (state.isFlipped) 1f else 0f,
-        animationSpec = tween(
-            durationMillis = 500,
-            easing = LinearOutSlowInEasing
-        ),
-        label = "question_card_flip_progress"
-    )
 
     SubcomposeLayout(
         modifier = modifier

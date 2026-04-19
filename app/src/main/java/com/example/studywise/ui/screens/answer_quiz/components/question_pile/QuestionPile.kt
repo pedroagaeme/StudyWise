@@ -2,14 +2,12 @@ package com.example.studywise.ui.screens.answer_quiz.components.question_pile
 
 import android.util.Log
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -19,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
@@ -29,13 +26,10 @@ import com.example.studywise.ui.screens.answer_quiz.AnswerQuizScreenUiState
 import com.example.studywise.ui.screens.answer_quiz.components.question_pile.question_card.QuestionCard
 import com.example.studywise.ui.screens.answer_quiz.components.question_pile.question_card.QuestionCardUiState
 import com.example.studywise.ui.screens.answer_quiz.AnswerQuizScreenAction
-import com.example.studywise.ui.theme.AppTheme
 import com.example.studywise.ui.theme.LogoGreen
 import com.example.studywise.ui.theme.LogoOrange
 import com.example.studywise.ui.theme.LogoPink
 import com.example.studywise.ui.theme.LogoTeal
-import kotlin.math.abs
-import kotlin.math.max
 import kotlin.math.min
 
 // Since we want to simulate the feeling of a pile of cards,
@@ -110,34 +104,67 @@ fun QuestionPile(
 
     // Animate cards whenever a new index value is provided
     val animatedCurrentIndex = remember { Animatable(state.targetIndex.toFloat()) }
+    
+    // Animate the flip of the current card
+    val isCurrentCardFlippedProgress = remember { Animatable(0f) }
+    val isCurrentCardFlippedFloat = state.questionList.getOrNull(state.targetIndex)
+        ?.let { if (it.isFlipped) 1f else 0f }
+        ?: 0f
 
-    LaunchedEffect(state.targetIndex) {
-        val current = animatedCurrentIndex.value.toInt()
-        val target = state.targetIndex
-        val stepDuration = 200
-
-        if (target > current) {
-            // Step forward one by one
-            for (i in (current + 1)..target) {
-                animatedCurrentIndex.animateTo(
-                    targetValue = i.toFloat(),
+    // Animate the card in a way only one type of animation runs at a time
+    val isQuestionIndexStill = state.targetIndex.toFloat() == animatedCurrentIndex.value
+    val isFlipProgressStill = isCurrentCardFlippedProgress.value == isCurrentCardFlippedProgress.targetValue
+    // 1. Check if current card needs to flip
+    // It can only flip if the card is still (not going from question 1 to 2, for example)
+    LaunchedEffect(isCurrentCardFlippedFloat, isQuestionIndexStill) {
+        if (isQuestionIndexStill) {
+            if (isCurrentCardFlippedProgress.targetValue != isCurrentCardFlippedFloat) {
+                isCurrentCardFlippedProgress.animateTo(
+                    targetValue = isCurrentCardFlippedFloat,
                     animationSpec = tween(
-                        durationMillis = if (i == target) 600 else stepDuration,
-                        easing = if (i == target) FastOutSlowInEasing else FastOutLinearInEasing
-                    ),
-
-                )
-            }
-        } else if (target < current) {
-            // Step backward one by one
-            for (i in (current - 1) downTo target) {
-                animatedCurrentIndex.animateTo(
-                    targetValue = i.toFloat(),
-                    animationSpec = tween(
-                        durationMillis = if (i == target) 600 else stepDuration,
-                        easing = if (i == target) FastOutSlowInEasing else LinearEasing
+                        durationMillis = 500,
+                        easing = LinearOutSlowInEasing
                     )
                 )
+            }
+        }
+    }
+    LaunchedEffect(state.targetIndex) {
+        // 2. Check if the target index has changed
+        // Can only animate once the card is still regarding flip position
+        if (isFlipProgressStill) {
+            if (animatedCurrentIndex.targetValue != state.targetIndex.toFloat()) {
+                val current = animatedCurrentIndex.value.toInt()
+                val target = state.targetIndex
+                val stepDuration = 200
+
+                // Reset the flip state for the next card
+                isCurrentCardFlippedProgress.snapTo(0f)
+
+                if (target > current) {
+                    // Step forward one by one
+                    for (i in (current + 1)..target) {
+                        animatedCurrentIndex.animateTo(
+                            targetValue = i.toFloat(),
+                            animationSpec = tween(
+                                durationMillis = if (i == target) 600 else stepDuration,
+                                easing = if (i == target) FastOutSlowInEasing else FastOutLinearInEasing
+                            ),
+
+                            )
+                    }
+                } else if (target < current) {
+                    // Step backward one by one
+                    for (i in (current - 1) downTo target) {
+                        animatedCurrentIndex.animateTo(
+                            targetValue = i.toFloat(),
+                            animationSpec = tween(
+                                durationMillis = if (i == target) 600 else stepDuration,
+                                easing = if (i == target) FastOutSlowInEasing else LinearEasing
+                            )
+                        )
+                    }
+                }
             }
         }
     }
@@ -176,6 +203,11 @@ fun QuestionPile(
                         state = questionCardState,
                         cardTransitionState = StackPositions.getStateFor(distance),
                         cardIndex = index,
+                        flipProgress = if (index == state.targetIndex) {
+                            isCurrentCardFlippedProgress.value
+                        } else {
+                            if (questionCardState.isFlipped) 1f else 0f
+                        },
                         onAction = onAction
                     )
                 }
@@ -189,6 +221,7 @@ fun CardInPile(
     state: QuestionCardUiState,
     cardTransitionState: CardTransitionState,
     cardIndex: Int,
+    flipProgress: Float,
     onAction: (AnswerQuizScreenAction) -> Unit
 ) {
     Box(
@@ -214,6 +247,7 @@ fun CardInPile(
             state = state,
             questionNumber = cardIndex + 1,
             onAction = onAction,
+            flipProgress = flipProgress,
             questionColor = when(cardIndex % 4) {
                 0 -> LogoPink
                 1 -> LogoOrange
