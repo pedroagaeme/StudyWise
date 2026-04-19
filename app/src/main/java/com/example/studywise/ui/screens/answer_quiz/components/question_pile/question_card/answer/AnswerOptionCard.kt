@@ -12,7 +12,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.innerShadow
 import androidx.compose.ui.graphics.Color
@@ -26,8 +25,6 @@ import androidx.compose.ui.unit.dp
 import com.example.studywise.ui.screens.answer_quiz.AnswerQuizScreenAction
 import com.example.studywise.ui.theme.CardSurfaceColor
 import com.example.studywise.ui.theme.CardTextColor
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 @Composable
 fun AnswerOptionCard(
@@ -37,6 +34,7 @@ fun AnswerOptionCard(
     selectedAnswer: AnswerUiState?,
     questionColor: Color,
     label: String = "A",
+    flipNeeded: Boolean = false,
 ) {
     val answerShape = RoundedCornerShape(12.dp)
 
@@ -99,17 +97,16 @@ fun AnswerOptionCard(
     }
 
     val questionIndex = questionNumber - 1
-
-    val scope = rememberCoroutineScope()
-
+    
     fun onClick() {
-        scope.launch {
-            onAction(AnswerQuizScreenAction.AnswerSelected(state, questionIndex))
-
-            delay(animationDurationMS.toLong())
-
-            onAction(AnswerQuizScreenAction.NextQuestionCardRequested(questionIndex))
-        }
+        onAction(
+            AnswerQuizScreenAction.AnswerSelected(
+                answer = state,
+                questionIndex = questionIndex,
+                flipNeeded = flipNeeded,
+                transitionDelayMs = animationDurationMS.toLong()
+            )
+        )
     }
 
     Button(

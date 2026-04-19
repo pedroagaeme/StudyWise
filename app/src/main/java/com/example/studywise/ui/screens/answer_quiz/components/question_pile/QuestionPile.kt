@@ -104,23 +104,38 @@ fun QuestionPile(
 
     // Animate cards whenever a new index value is provided
     val animatedCurrentIndex = remember { Animatable(state.targetIndex.toFloat()) }
-    
-    // Animate the flip of the current card
-    val isCurrentCardFlippedProgress = remember { Animatable(0f) }
-    val isCurrentCardFlippedFloat = state.questionList.getOrNull(state.targetIndex)
-        ?.let { if (it.isFlipped) 1f else 0f }
-        ?: 0f
+
+    // A single flip progress is owned by one card index at a time.
+    val flipProgress = remember { Animatable(0f) }
+    val flipIndexState = remember { mutableStateOf(state.targetIndex) }
+    val flipIndex = flipIndexState.value.coerceIn(0, (state.questionList.lastIndex).coerceAtLeast(0))
+
+    LaunchedEffect(state.questionList.size) {
+        if (state.questionList.isEmpty()) return@LaunchedEffect
+        val clamped = flipIndexState.value.coerceIn(0, state.questionList.lastIndex)
+        if (clamped != flipIndexState.value) {
+            flipIndexState.value = clamped
+        }
+        val initialTarget = if (state.questionList[flipIndexState.value].isFlipped) 1f else 0f
+        if (flipProgress.value != initialTarget) {
+            flipProgress.snapTo(initialTarget)
+        }
+    }
+
+    val currentFlipCard = state.questionList.getOrNull(flipIndex)
+    val currentFlipTarget = if (currentFlipCard?.isFlipped == true) 1f else 0f
 
     // Animate the card in a way only one type of animation runs at a time
-    val isQuestionIndexStill = state.targetIndex.toFloat() == animatedCurrentIndex.value
-    val isFlipProgressStill = isCurrentCardFlippedProgress.value == isCurrentCardFlippedProgress.targetValue
+    val isQuestionIndexStill = flipIndex.toFloat() == animatedCurrentIndex.value
+    val isFlipProgressStill = !flipProgress.isRunning
+
     // 1. Check if current card needs to flip
     // It can only flip if the card is still (not going from question 1 to 2, for example)
-    LaunchedEffect(isCurrentCardFlippedFloat, isQuestionIndexStill) {
-        if (isQuestionIndexStill) {
-            if (isCurrentCardFlippedProgress.targetValue != isCurrentCardFlippedFloat) {
-                isCurrentCardFlippedProgress.animateTo(
-                    targetValue = isCurrentCardFlippedFloat,
+    LaunchedEffect(flipIndex, currentFlipTarget, isQuestionIndexStill) {
+        if (isQuestionIndexStill && currentFlipCard != null) {
+            if (flipProgress.targetValue != currentFlipTarget) {
+                flipProgress.animateTo(
+                    targetValue = currentFlipTarget,
                     animationSpec = tween(
                         durationMillis = 500,
                         easing = LinearOutSlowInEasing
@@ -129,17 +144,16 @@ fun QuestionPile(
             }
         }
     }
-    LaunchedEffect(state.targetIndex) {
-        // 2. Check if the target index has changed
-        // Can only animate once the card is still regarding flip position
+
+    // 2. Check if the target index has changed
+    // Can only animate once the card is still regarding flip position
+    LaunchedEffect(state.targetIndex, isFlipProgressStill) {
         if (isFlipProgressStill) {
-            if (animatedCurrentIndex.targetValue != state.targetIndex.toFloat()) {
+            if (animatedCurrentIndex.value != state.targetIndex.toFloat()) {
                 val current = animatedCurrentIndex.value.toInt()
                 val target = state.targetIndex
                 val stepDuration = 200
 
-                // Reset the flip state for the next card
-                isCurrentCardFlippedProgress.snapTo(0f)
 
                 if (target > current) {
                     // Step forward one by one
@@ -164,6 +178,12 @@ fun QuestionPile(
                             )
                         )
                     }
+                }
+
+                if (state.questionList.isNotEmpty()) {
+                    val nextFlipIndex = target.coerceIn(0, state.questionList.lastIndex)
+                    flipIndexState.value = nextFlipIndex
+                    flipProgress.snapTo(if (state.questionList[nextFlipIndex].isFlipped) 1f else 0f)
                 }
             }
         }
@@ -203,10 +223,10 @@ fun QuestionPile(
                         state = questionCardState,
                         cardTransitionState = StackPositions.getStateFor(distance),
                         cardIndex = index,
-                        flipProgress = if (index == state.targetIndex) {
-                            isCurrentCardFlippedProgress.value
+                        flipProgress = if (index == flipIndex) {
+                            flipProgress.value
                         } else {
-                            if (questionCardState.isFlipped) 1f else 0f
+                            0f
                         },
                         onAction = onAction
                     )

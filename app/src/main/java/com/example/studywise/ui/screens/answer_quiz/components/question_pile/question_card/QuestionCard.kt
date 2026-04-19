@@ -1,6 +1,5 @@
 package com.example.studywise.ui.screens.answer_quiz.components.question_pile.question_card
 
-import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,9 +23,10 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.innerShadow
@@ -134,6 +134,8 @@ fun QuestionCard(
         val frontAnswers = indexedAnswers.take(frontCount)
         val backAnswers = indexedAnswers.drop(frontCount)
         val hasBackSide = backAnswers.isNotEmpty()
+        val hasCorrectOnFront = frontAnswers.any { it.answer.isCorrect }
+        val hasCorrectOnBack = backAnswers.any { it.answer.isCorrect }
 
         val fixedCardConstraints = Constraints.fixed(width, height)
         val effectiveFlipProgress = if (hasBackSide) flipProgress else 0f
@@ -156,6 +158,7 @@ fun QuestionCard(
                         questionNumber = questionNumber,
                         answers = frontAnswers,
                         canToggleSide = hasBackSide,
+                        flipNeededOnAnswer = hasCorrectOnBack,
                         modifier = Modifier.graphicsLayer {
                             scaleX = flipScale
                             scaleY = flipScale
@@ -169,6 +172,7 @@ fun QuestionCard(
                         questionColor = questionColor,
                         questionNumber = questionNumber,
                         answers = backAnswers,
+                        flipNeededOnAnswer = hasCorrectOnFront,
                         modifier = Modifier.graphicsLayer {
                             scaleX = flipScale
                             scaleY = flipScale
@@ -214,6 +218,7 @@ private fun QuestionCardFront(
     questionNumber: Int,
     answers: List<IndexedAnswer>,
     canToggleSide: Boolean,
+    flipNeededOnAnswer: Boolean,
     modifier: Modifier = Modifier
 ) {
     QuestionCardScaffold(
@@ -259,7 +264,8 @@ private fun QuestionCardFront(
                         state = indexed.answer,
                         selectedAnswer = selectedAnswer,
                         questionColor = questionColor,
-                        label = ('A' + indexed.originalIndex).toString()
+                        label = ('A' + indexed.originalIndex).toString(),
+                        flipNeeded = flipNeededOnAnswer,
                     )
                 }.first().measure(childConstraints)
             }
@@ -315,6 +321,7 @@ private fun QuestionCardBack(
     questionColor: Color,
     questionNumber: Int,
     answers: List<IndexedAnswer>,
+    flipNeededOnAnswer: Boolean,
     modifier: Modifier = Modifier
 ) {
     QuestionCardScaffold(
@@ -338,7 +345,8 @@ private fun QuestionCardBack(
                 state = indexed.answer,
                 selectedAnswer = selectedAnswer,
                 questionColor = questionColor,
-                label = ('A' + indexed.originalIndex).toString()
+                label = ('A' + indexed.originalIndex).toString(),
+                flipNeeded = flipNeededOnAnswer
             )
         }
     }

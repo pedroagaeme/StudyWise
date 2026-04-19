@@ -1,12 +1,10 @@
 package com.example.studywise.viewmodels
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.example.studywise.data.QuestionDto
 import com.example.studywise.data.repository.QuizRepository
 import com.example.studywise.ui.screens.answer_quiz.AnswerQuizScreenUiState
 import com.example.studywise.ui.screens.answer_quiz.components.question_pile.question_card.answer.AnswerUiState
@@ -21,9 +19,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import javax.inject.Inject
-
 
 @HiltViewModel(assistedFactory = AnswerQuizScreenViewModel.Factory::class)
 class AnswerQuizScreenViewModel @AssistedInject constructor(
@@ -48,7 +45,7 @@ class AnswerQuizScreenViewModel @AssistedInject constructor(
             val questions = repository.getQuestionsByQuizId(quizId)
 
             // 2. Transform the database models into UI models
-            val uiQuestionList = questions.mapIndexed { index, questionWithAnswers ->
+            val uiQuestionList = questions.map { questionWithAnswers ->
                 QuestionCardUiState(
                     id = questionWithAnswers.id,
                     description = questionWithAnswers.description,
@@ -74,7 +71,7 @@ class AnswerQuizScreenViewModel @AssistedInject constructor(
                     val orderedPile = lastAttempt.questionAttempts.mapNotNull {
                         uiQuestionList.find { question -> question.id == it.questionId }
                     }
-                    val targetIndex = orderedPile.indexOfFirst { it?.id == firstUnansweredQuestion.questionId}
+                    val targetIndex = orderedPile.indexOfFirst { it.id == firstUnansweredQuestion.questionId}
                     _uiState.update {
                         it.copy(
                             currentAttemptId = lastAttempt.id,
@@ -114,29 +111,51 @@ class AnswerQuizScreenViewModel @AssistedInject constructor(
     fun onAction(action: AnswerQuizScreenAction) {
         when(action) {
             is AnswerQuizScreenAction.AnswerSelected -> {
-                _uiState.update { currentState ->
-                    currentState.copy(
-                        questionList = currentState.questionList.mapIndexed { index, question ->
-                            if (index == action.questionIndex) {
-                                question.copy(selectedAnswer = action.answer)
-                            } else {
-                                question
+                viewModelScope.launch {
+                    _uiState.update { currentState ->
+                        currentState.copy(
+                            questionList = currentState.questionList.mapIndexed { index, question ->
+                                if (index == action.questionIndex) {
+                                    question.copy(
+                                        selectedAnswer = action.answer,
+                                    )
+                                } else {
+                                    question
+                                }
                             }
-                        }
-                    )
-                }
-                val questionId = _uiState.value.questionList[action.questionIndex].id
-                val selectedAnswerId = _uiState.value.questionList[action.questionIndex].selectedAnswer?.id
-                val quizAttemptId = _uiState.value.currentAttemptId
-                if (quizAttemptId != null && selectedAnswerId != null) {
-                    viewModelScope.launch {
-                        repository.updateQuestionAttempt(
-                            questionId = questionId,
-                            selectedAnswerId = selectedAnswerId,
-                            quizAttemptId = quizAttemptId
                         )
                     }
+                    val questionId = _uiState.value.questionList[action.questionIndex].id
+                    val selectedAnswerId =
+                        _uiState.value.questionList[action.questionIndex].selectedAnswer?.id
+                    val quizAttemptId = _uiState.value.currentAttemptId
+                    if (quizAttemptId != null && selectedAnswerId != null) {
+                        viewModelScope.launch {
+                            repository.updateQuestionAttempt(
+                                questionId = questionId,
+                                selectedAnswerId = selectedAnswerId,
+                                quizAttemptId = quizAttemptId
+                            )
+                        }
                     }
+                    delay(action.transitionDelayMs)
+                    _uiState.update { currentState ->
+                        currentState.copy(
+                            questionList = currentState.questionList.mapIndexed { index, question ->
+                                if (index == action.questionIndex) {
+                                    val updatedFlipped =
+                                        if (action.flipNeeded) !question.isFlipped else question.isFlipped
+                                    question.copy(
+                                        isFlipped = updatedFlipped,
+                                    )
+                                } else {
+                                    question
+                                }
+                            }
+                        )
+                    }
+                    goToNextQuestion(action.questionIndex)
+                }
             }
             is AnswerQuizScreenAction.FlipToggled -> {
                 val tempQuestionList = _uiState.value.questionList.toMutableList()
@@ -144,20 +163,21 @@ class AnswerQuizScreenViewModel @AssistedInject constructor(
                 _uiState.update { currentState ->
                     currentState.copy(questionList = tempQuestionList) }
             }
-            is AnswerQuizScreenAction.NextQuestionCardRequested -> {
-                _uiState.update { it.copy(targetIndex = action.questionIndex + 1) }
-                if (action.questionIndex + 1 >= _uiState.value.questionList.size) {
-                    _uiState.update { currentState ->
-                        currentState.copy(
-                            pendingEffect = AnswerQuizUiEffect.FinishQuiz
-                        )
-                    }
-                }
+        }
+    }
+    private fun goToNextQuestion(questionIndex: Int) {
+        _uiState.update { it.copy(targetIndex = questionIndex + 1) }
+        if (questionIndex + 1 >= _uiState.value.questionList.size) {
+            _uiState.update { currentState ->
+                currentState.copy(
+                    pendingEffect = AnswerQuizUiEffect.FinishQuiz
+                )
             }
         }
     }
 
     companion object {
+
         fun factory(
             quizId: String,
             repository: QuizRepository,
