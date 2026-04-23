@@ -223,11 +223,8 @@ fun QuestionPile(
                         state = questionCardState,
                         cardTransitionState = StackPositions.getStateFor(distance),
                         cardIndex = index,
-                        flipProgress = if (index == flipIndex) {
-                            flipProgress.value
-                        } else {
-                            0f
-                        },
+                        flipProgress = flipProgress.value,
+                        currentFlipIndex = flipIndex,
                         onAction = onAction
                     )
                 }
@@ -242,6 +239,7 @@ fun CardInPile(
     cardTransitionState: CardTransitionState,
     cardIndex: Int,
     flipProgress: Float,
+    currentFlipIndex: Int,
     onAction: (AnswerQuizScreenAction) -> Unit
 ) {
     Box(
@@ -265,6 +263,8 @@ fun CardInPile(
     ) {
         QuestionCard(
             state = state,
+            cardIndex = cardIndex,
+            currentFlipIndex = currentFlipIndex,
             questionNumber = cardIndex + 1,
             onAction = onAction,
             flipProgress = flipProgress,

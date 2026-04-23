@@ -47,7 +47,9 @@ fun NavigationRoot(
                 }
                 is Route.Login -> {
                     NavEntry(key) {
-                        LoginScreen(replaceWithTabsRoute = { backStack.replaceTop(Route.Tabs) })
+                        LoginScreen(
+                            replaceWithTabsRoute = { backStack.replaceTop(Route.Tabs) },
+                        )
                     }
                 }
                 is Route.Tabs -> {

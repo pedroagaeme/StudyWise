@@ -46,6 +46,7 @@ import com.example.studywise.ui.screens.answer_quiz.components.question_pile.que
 import com.example.studywise.ui.theme.CardSurfaceColor
 import com.example.studywise.ui.theme.CardTextColor
 import kotlin.math.abs
+import kotlin.math.pow
 import kotlin.math.roundToInt
 
 private const val CARD_ASPECT_RATIO = 0.55f
@@ -53,6 +54,10 @@ private val CARD_PADDING_HORIZONTAL = 20.dp
 private val CARD_PADDING_TOP = 20.dp
 private val CARD_PADDING_BOTTOM = 32.dp
 private val BLOCK_SPACING = 20.dp
+private const val FOLLOWER_CARD_COUNT = 3
+private const val FOLLOWER_MAX_SCALE_REDUCTION = 0.08f
+
+private const val CLAMPING_FACTOR = 0.5f
 
 private enum class MeasureSlot {
     NumberBadge,
@@ -72,6 +77,8 @@ fun QuestionCard(
     modifier: Modifier = Modifier,
     questionColor: Color,
     questionNumber: Int,
+    cardIndex: Int = questionNumber - 1,
+    currentFlipIndex: Int = cardIndex,
     flipProgress: Float = 0f,
 ) {
     val indexedAnswers = state.answers.mapIndexed { index, answer -> IndexedAnswer(index, answer) }
@@ -138,9 +145,23 @@ fun QuestionCard(
         val hasCorrectOnBack = backAnswers.any { it.answer.isCorrect }
 
         val fixedCardConstraints = Constraints.fixed(width, height)
-        val effectiveFlipProgress = if (hasBackSide) flipProgress else 0f
-        val depthPulse = (1f - abs((effectiveFlipProgress * 2f) - 1f)).coerceIn(0f, 1f)
-        val flipScale = 1f + (0.15f * depthPulse)
+        val normalizedFlipProgress = flipProgress.coerceIn(0f, 1f)
+        val isCurrentFlipCard = cardIndex == currentFlipIndex
+        val effectiveFlipProgress = if (hasBackSide && isCurrentFlipCard) normalizedFlipProgress else 0f
+
+        val distanceFromFlippingCard = cardIndex - currentFlipIndex
+        val followerDepthPulse = (1f - abs((normalizedFlipProgress * 2f) - 1f)).coerceIn(0f, 1f)
+        val followerStrength = when (distanceFromFlippingCard) {
+            1 -> 1f
+            2 -> 0.7f
+            3 -> 0.4f
+            else -> 0f
+        }
+        val cardScale = if (distanceFromFlippingCard in 1..FOLLOWER_CARD_COUNT) {
+            1f - (FOLLOWER_MAX_SCALE_REDUCTION * followerStrength * (followerDepthPulse).pow(CLAMPING_FACTOR))
+        } else {
+            1f
+        }
 
         val flippablePlaceable = subcompose(MeasureSlot.FlippableCard) {
             DoubleSidedComposable(
@@ -160,8 +181,8 @@ fun QuestionCard(
                         canToggleSide = hasBackSide,
                         flipNeededOnAnswer = hasCorrectOnBack,
                         modifier = Modifier.graphicsLayer {
-                            scaleX = flipScale
-                            scaleY = flipScale
+                            scaleX = cardScale
+                            scaleY = cardScale
                         }
                     )
                 },
@@ -174,8 +195,8 @@ fun QuestionCard(
                         answers = backAnswers,
                         flipNeededOnAnswer = hasCorrectOnFront,
                         modifier = Modifier.graphicsLayer {
-                            scaleX = flipScale
-                            scaleY = flipScale
+                            scaleX = cardScale
+                            scaleY = cardScale
                         }
                     )
                 }
