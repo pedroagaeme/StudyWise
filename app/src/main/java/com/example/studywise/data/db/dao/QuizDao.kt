@@ -81,6 +81,9 @@ interface QuizDao {
     @Query("SELECT * FROM QuizBasicInfoView ORDER BY lastAttemptedAt DESC LIMIT :limit")
     fun getMostRecentQuizzes(limit: Int): Flow<List<QuizBasicInfo>>
 
+    @Query("SELECT * FROM QuizBasicInfoView WHERE id = :quizId LIMIT 1")
+    fun getQuizById(quizId: String): Flow<QuizBasicInfo?>
+
     @Transaction
     @Query("""
         SELECT QC.id, QC.name
@@ -92,6 +95,14 @@ interface QuizDao {
     fun getFilteredQuizzes(query: String): Flow<List<QuizBasicInfo>>
     @Query("SELECT * FROM quiz_attempt WHERE quizId = :quizId ORDER BY createdAt DESC LIMIT 1")
     suspend fun getLastQuizAttemptWithQuestionsById(quizId: String): QuizAttemptFullInfo?
+
+    @Transaction
+    @Query("SELECT * FROM quiz_attempt WHERE quizId = :quizId ORDER BY createdAt DESC LIMIT 1")
+    fun getLastQuizAttemptWithQuestionsByIdFlow(quizId: String): Flow<QuizAttemptFullInfo?>
+
+    @Transaction
+    @Query("SELECT * FROM quiz_attempt WHERE quizId = :quizId ORDER BY createdAt DESC")
+    fun getQuizAttemptsByQuizIdFlow(quizId: String): Flow<List<QuizAttemptFullInfo>>
 
 
     @Query("SELECT * FROM question_attempt WHERE quizAttemptId = :quizAttemptId ORDER BY sortOrder")

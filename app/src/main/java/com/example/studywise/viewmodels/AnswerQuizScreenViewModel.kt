@@ -25,12 +25,13 @@ import kotlinx.coroutines.launch
 @HiltViewModel(assistedFactory = AnswerQuizScreenViewModel.Factory::class)
 class AnswerQuizScreenViewModel @AssistedInject constructor(
     @Assisted private val quizId: String,
+    @Assisted private val forceNewAttempt: Boolean,
     private val repository: QuizRepository,
 ): ViewModel() {
 
     @AssistedFactory
     interface Factory {
-        fun create(quizId: String): AnswerQuizScreenViewModel
+        fun create(quizId: String, forceNewAttempt: Boolean = false): AnswerQuizScreenViewModel
     }
     private val _uiState = MutableStateFlow(AnswerQuizScreenUiState())
     val uiState: StateFlow<AnswerQuizScreenUiState> = _uiState.asStateFlow()
@@ -63,23 +64,25 @@ class AnswerQuizScreenViewModel @AssistedInject constructor(
                 )
             }
 
-            // 3. See if lastAttempt is unfinished
-            val lastAttempt = repository.getLastQuizAttemptById(quizId)
-            if (lastAttempt != null) {
-                val firstUnansweredQuestion = lastAttempt.questionAttempts.find { it.selectedAnswerId == null }
-                if (firstUnansweredQuestion != null) {
-                    val orderedPile = lastAttempt.questionAttempts.mapNotNull {
-                        uiQuestionList.find { question -> question.id == it.questionId }
+            // 3. Resume unfinished attempt unless caller explicitly requests a fresh one.
+            if (!forceNewAttempt) {
+                val lastAttempt = repository.getLastQuizAttemptById(quizId)
+                if (lastAttempt != null) {
+                    val firstUnansweredQuestion = lastAttempt.questionAttempts.find { it.selectedAnswerId == null }
+                    if (firstUnansweredQuestion != null) {
+                        val orderedPile = lastAttempt.questionAttempts.mapNotNull {
+                            uiQuestionList.find { question -> question.id == it.questionId }
+                        }
+                        val targetIndex = orderedPile.indexOfFirst { it.id == firstUnansweredQuestion.questionId}
+                        _uiState.update {
+                            it.copy(
+                                currentAttemptId = lastAttempt.id,
+                                questionList = orderedPile,
+                                targetIndex = targetIndex
+                            )
+                        }
+                        return@launch
                     }
-                    val targetIndex = orderedPile.indexOfFirst { it.id == firstUnansweredQuestion.questionId}
-                    _uiState.update {
-                        it.copy(
-                            currentAttemptId = lastAttempt.id,
-                            questionList = orderedPile,
-                            targetIndex = targetIndex
-                        )
-                    }
-                    return@launch
                 }
             }
 
@@ -180,11 +183,13 @@ class AnswerQuizScreenViewModel @AssistedInject constructor(
 
         fun factory(
             quizId: String,
+            forceNewAttempt: Boolean,
             repository: QuizRepository,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 AnswerQuizScreenViewModel(
                     quizId = quizId,
+                    forceNewAttempt = forceNewAttempt,
                     repository = repository
                 )
             }

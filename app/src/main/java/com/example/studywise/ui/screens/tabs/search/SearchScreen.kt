@@ -22,7 +22,7 @@ fun SearchScreen(
     modifier: Modifier = Modifier,
     viewModel: SearchScreenViewModel = hiltViewModel(),
     innerPadding: PaddingValues,
-    pushAnswerQuizRoute: (String) -> Unit
+    pushQuizDetailsRoute: (String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val onAction = viewModel::onAction
@@ -30,7 +30,7 @@ fun SearchScreen(
     LaunchedEffect(uiState.pendingEffect) {
         uiState.pendingEffect?.let { effect ->
             when (effect) {
-                is SearchScreenEffect.NavigateToAnswerQuiz -> pushAnswerQuizRoute(effect.quizId)
+                is SearchScreenEffect.NavigateToQuizDetails -> pushQuizDetailsRoute(effect.quizId)
             }
             viewModel.effectConsumed()
         }

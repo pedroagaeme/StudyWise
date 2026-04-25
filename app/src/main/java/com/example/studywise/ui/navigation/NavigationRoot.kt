@@ -12,8 +12,10 @@ import com.example.studywise.ui.screens.InitialScreen
 import com.example.studywise.ui.screens.answer_quiz.AnswerQuizScreen
 import com.example.studywise.ui.screens.create_quiz.CreateQuizScreen
 import com.example.studywise.ui.screens.login.LoginScreen
+import com.example.studywise.ui.screens.quiz_details.QuizDetailsScreen
 import com.example.studywise.ui.screens.tabs.MainScreen
 import com.example.studywise.viewmodels.AnswerQuizScreenViewModel
+import com.example.studywise.viewmodels.QuizDetailsViewModel
 
 private fun <T> MutableList<T>.replaceTop(item: T) {
     if (isNotEmpty()) removeAt(lastIndex)
@@ -56,8 +58,28 @@ fun NavigationRoot(
                     NavEntry(key) {
                         MainScreen(
                             pushCreateQuizRoute = { backStack.add(Route.CreateQuiz)},
+                            pushQuizDetailsRoute = { quizId: String ->
+                                backStack.add(Route.QuizDetails(quizId))
+                            },
                             pushAnswerQuizRoute = { quizId: String ->
                                 backStack.add(Route.AnswerQuiz(quizId))
+                            }
+                        )
+                    }
+                }
+                is Route.QuizDetails -> {
+                    NavEntry(key) {
+                        val viewModel = hiltViewModel<QuizDetailsViewModel, QuizDetailsViewModel.Factory>(
+                            creationCallback = { factory -> factory.create(key.quizId) }
+                        )
+                        QuizDetailsScreen(
+                            goBack = { backStack.pop() },
+                            viewModel = viewModel,
+                            onContinueAttemptClick = { quizId ->
+                                backStack.add(Route.AnswerQuiz(quizId = quizId, forceNewAttempt = false))
+                            },
+                            onCreateNewAttemptClick = { quizId ->
+                                backStack.add(Route.AnswerQuiz(quizId = quizId, forceNewAttempt = true))
                             }
                         )
                     }
@@ -75,7 +97,7 @@ fun NavigationRoot(
                 is Route.AnswerQuiz -> {
                     NavEntry(key) {
                         val viewModel = hiltViewModel<AnswerQuizScreenViewModel, AnswerQuizScreenViewModel.Factory>(
-                            creationCallback = { factory -> factory.create(key.quizId) }
+                            creationCallback = { factory -> factory.create(key.quizId, key.forceNewAttempt) }
                         )
                         AnswerQuizScreen(
                             goBack = { backStack.pop() },

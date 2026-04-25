@@ -28,7 +28,7 @@ import kotlin.math.max
 fun HomeScreen(
     viewModel: HomeScreenViewModel = hiltViewModel(),
     innerPadding: PaddingValues,
-    pushAnswerQuizRoute: (String) -> Unit
+    pushQuizDetailsRoute: (String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val onAction = viewModel::onAction
@@ -41,8 +41,8 @@ fun HomeScreen(
                         effect.offset,
                         tween(700)
                     ) }
-                is HomeScreenEffect.NavigateToAnswerQuiz -> {
-                    pushAnswerQuizRoute(effect.quizId)
+                is HomeScreenEffect.NavigateToQuizDetails -> {
+                    pushQuizDetailsRoute(effect.quizId)
                 }
             }
             viewModel.effectConsumed()

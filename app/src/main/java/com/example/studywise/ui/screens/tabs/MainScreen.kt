@@ -22,6 +22,7 @@ import com.example.studywise.ui.theme.AppTheme
 @Composable
 fun MainScreen(
     pushCreateQuizRoute: () -> Unit = {},
+    pushQuizDetailsRoute: (String) -> Unit = {},
     pushAnswerQuizRoute: (String) -> Unit = {}
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -93,8 +94,8 @@ fun MainScreen(
         ) {
 
             when (selectedTab) {
-                0 -> HomeScreen(innerPadding = innerPadding, pushAnswerQuizRoute = pushAnswerQuizRoute)
-                1 -> SearchScreen(innerPadding = innerPadding, pushAnswerQuizRoute = pushAnswerQuizRoute)
+                0 -> HomeScreen(innerPadding = innerPadding, pushQuizDetailsRoute = pushQuizDetailsRoute)
+                1 -> SearchScreen(innerPadding = innerPadding, pushQuizDetailsRoute = pushQuizDetailsRoute)
                 2 -> PlaceholderScreen()
                 3 -> PlaceholderScreen()
             }

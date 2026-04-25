@@ -47,6 +47,7 @@ object QuizMappers {
             id = quizInfo.quiz.id,
             title = quizInfo.quiz.title,
             lastInteracted = quizInfo.lastAttemptedAt ?: quizInfo.quiz.createdAt,
+            createdAt = quizInfo.quiz.createdAt,
             questionCount = quizInfo.questionCount,
             averageScore = quizInfo.averageScore,
             collectionName = quizInfo.collectionName
@@ -255,6 +256,12 @@ class QuizRepository @Inject constructor(
         }
     }
 
+    fun getQuizById(quizId: String): Flow<QuizDto?> {
+        return quizDao.getQuizById(quizId).map { quizInfo ->
+            quizInfo?.let { QuizMappers.toQuizDto(it) }
+        }
+    }
+
     fun getCollectionsWithQuizzes(): Flow<List<QuizCollectionDto>> {
         return quizDao.getCollectionsWithQuizzes().map { collectionList ->
             collectionList.map { collectionWithQuizzes ->
@@ -321,6 +328,18 @@ class QuizRepository @Inject constructor(
         val quizAttempt = quizDao.getLastQuizAttemptWithQuestionsById(quizId)
         return quizAttempt?.let {
             QuizMappers.toQuizAttemptDto(it)
+        }
+    }
+
+    fun getLastQuizAttemptByIdFlow(quizId: String): Flow<QuizAttemptDto?> {
+        return quizDao.getLastQuizAttemptWithQuestionsByIdFlow(quizId).map { quizAttempt ->
+            quizAttempt?.let { QuizMappers.toQuizAttemptDto(it) }
+        }
+    }
+
+    fun getQuizAttemptsByQuizIdFlow(quizId: String): Flow<List<QuizAttemptDto>> {
+        return quizDao.getQuizAttemptsByQuizIdFlow(quizId).map { attemptList ->
+            attemptList.map { QuizMappers.toQuizAttemptDto(it) }
         }
     }
 

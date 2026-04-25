@@ -62,7 +62,7 @@ class SearchScreenViewModel @Inject constructor(
             is SearchScreenAction.OnQuizCardClick -> {
                 _uiState.update {
                     it.copy(
-                        pendingEffect = SearchScreenEffect.NavigateToAnswerQuiz(action.quizId)
+                        pendingEffect = SearchScreenEffect.NavigateToQuizDetails(action.quizId)
                     )
                 }
             }

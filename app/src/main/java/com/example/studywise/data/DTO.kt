@@ -12,7 +12,8 @@ data class QuizDto(
     val questionCount: Int,
     val collectionName: String? = null,
     val averageScore: Float? = null,
-    val lastInteracted: String
+    val lastInteracted: String,
+    val createdAt: String? = null,
 )
 
 data class QuestionDto(

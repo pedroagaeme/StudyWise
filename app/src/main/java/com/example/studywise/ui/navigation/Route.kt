@@ -15,7 +15,13 @@ sealed interface Route: NavKey {
     data object CreateQuiz : Route, NavKey
 
     @Serializable
-    data class AnswerQuiz(val quizId: String) : Route, NavKey
+    data class QuizDetails(val quizId: String) : Route, NavKey
+
+    @Serializable
+    data class AnswerQuiz(
+        val quizId: String,
+        val forceNewAttempt: Boolean = false
+    ) : Route, NavKey
 
 }
 

@@ -80,7 +80,7 @@ class HomeScreenViewModel @Inject constructor(
                 _uiState.update {
                     currentState ->
                     currentState.copy(
-                        pendingEffect = HomeScreenEffect.NavigateToAnswerQuiz(action.quizId)
+                        pendingEffect = HomeScreenEffect.NavigateToQuizDetails(action.quizId)
                     )
                 }
             }

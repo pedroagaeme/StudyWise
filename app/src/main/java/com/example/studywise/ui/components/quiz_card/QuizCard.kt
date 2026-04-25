@@ -1,6 +1,4 @@
 package com.example.studywise.ui.components.quiz_card
-import android.util.Log
-import com.example.studywise.ui.components.custom_progress_indicators.CustomCircularProgressIndicator
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,9 +18,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -31,6 +26,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.studywise.data.QuizDto
+import com.example.studywise.ui.components.ProgressIndicatorBox
 import com.example.studywise.ui.theme.AppTheme
 import com.example.studywise.utils.formatDateHumanReadable
 
@@ -60,32 +56,6 @@ fun AdditionalInfoRow(quiz: QuizDto) {
     }
 }
 
-@Composable
-fun ProgressIndicatorBox(progress: Float) {
-    // Animate progress value for the indicator
-    val animatedProgress by animateFloatAsState(
-        targetValue = progress,
-        animationSpec = tween(durationMillis = 1000),
-        label = "progressAnimation"
-    )
-    Box(
-        modifier = Modifier
-            .size(100.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        CustomCircularProgressIndicator(
-            progress = animatedProgress,
-            modifier = Modifier.padding(20.dp)
-        )
-        Text(
-            text = "${(animatedProgress * 100).toInt()}%",
-            style = MaterialTheme.typography.bodyMedium.copy(
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-        )
-    }
-}
 
 @Composable
 fun NewQuizBadge() {
@@ -167,7 +137,7 @@ fun QuizCard(
                     AdditionalInfoRow(quiz)
                 }
                 if (progress != null) {
-                    ProgressIndicatorBox(progress = progress)
+                    ProgressIndicatorBox(progress = progress, indicatorPadding = 20.dp)
                 } else {
                     NewQuizBadge()
                 }
