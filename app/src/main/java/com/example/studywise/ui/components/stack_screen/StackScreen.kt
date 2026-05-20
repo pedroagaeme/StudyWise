@@ -44,8 +44,6 @@ fun StackScreen(
     actions: @Composable RowScope.() -> Unit = {},
     content: @Composable (Modifier) -> Unit
 ) {
-    // Animate the provided progress so callers can pass 0f/1f and get the
-    // same tween/FastOutSlowInEasing animation used by QuizDetailsScreenContent
     val animatedProgress by animateFloatAsState(
         targetValue = transitionProgress,
         animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing),

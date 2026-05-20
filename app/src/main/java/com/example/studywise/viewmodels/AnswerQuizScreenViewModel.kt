@@ -59,7 +59,6 @@ class AnswerQuizScreenViewModel @AssistedInject constructor(
                 QuestionCardUiState(
                     id = questionWithAnswers.id,
                     description = questionWithAnswers.description,
-                    // Map the nested answers list
                     answers = questionWithAnswers.answerOptions.map { answerData ->
                         AnswerUiState(
                             id = answerData.id,
@@ -79,8 +78,10 @@ class AnswerQuizScreenViewModel @AssistedInject constructor(
                 if (lastAttempt != null) {
                     val firstUnansweredQuestion = lastAttempt.questionAttempts.find { it.selectedAnswerId == null }
                     if (firstUnansweredQuestion != null) {
-                        val orderedPile = lastAttempt.questionAttempts.mapNotNull {
-                            uiQuestionList.find { question -> question.id == it.questionId }
+                        val orderedPile = lastAttempt.questionAttempts.mapNotNull { questionAttempt ->
+                            uiQuestionList.find { question -> question.id == questionAttempt.questionId }?.let { baseQuestion ->
+                                baseQuestion.copy(answers = shuffleAnswersWithHash(baseQuestion.answers, lastAttempt.id))
+                            }
                         }
                         val targetIndex = orderedPile.indexOfFirst { it.id == firstUnansweredQuestion.questionId}
                         _uiState.update {
@@ -105,8 +106,8 @@ class AnswerQuizScreenViewModel @AssistedInject constructor(
 
             val quizAttemptId = repository.createQuizAttempt(quizId, shuffleMap)
 
-            val initialQuestionList = shuffleOrder.map {
-                uiQuestionList[it]
+            val initialQuestionList = shuffleOrder.map { index ->
+                uiQuestionList[index].copy(answers = shuffleAnswersWithHash(uiQuestionList[index].answers, quizAttemptId ?: ""))
             }
 
             _uiState.update { currentState ->
@@ -119,6 +120,12 @@ class AnswerQuizScreenViewModel @AssistedInject constructor(
             }
 
         }
+    }
+
+    private fun shuffleAnswersWithHash(answers: List<AnswerUiState>, seed: String): List<AnswerUiState> {
+        val hash = seed.hashCode().toLong()
+        val random = kotlin.random.Random(hash)
+        return answers.shuffled(random)
     }
 
 
