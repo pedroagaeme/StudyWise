@@ -3,6 +3,9 @@ package com.example.studywise.ui.screens.create_quiz
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -13,21 +16,20 @@ import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.studywise.ui.components.stack_screen.StackScreen
 import com.example.studywise.ui.theme.AppTheme
-import com.example.studywise.utils.ObserveAsEvents
 import com.example.studywise.viewmodels.CreateQuizScreenViewModel
 
 @Composable
@@ -82,7 +84,6 @@ fun CreateQuizScreen(
         modifier = modifier
     )
 }
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateQuizScreenContent(
     state: CreateQuizUiState,
@@ -91,33 +92,30 @@ fun CreateQuizScreenContent(
 ) {
     val canAddMore = state.attachments.size < MAX_ATTACHMENTS
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        "Create New Quiz",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = { onAction(CreateQuizScreenAction.OnDismiss) }) {
-                        Icon(Icons.Rounded.Close, contentDescription = "Close")
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color.Transparent
-                )
-            )
+    // enter animation progress for this screen
+    val enterProgressState = remember { mutableStateOf(0f) }
+    LaunchedEffect(Unit) {
+        enterProgressState.value = 1f
+    }
+
+    StackScreen(
+        title = "Create New Quiz",
+        modifier = modifier,
+        onBackClick = { onAction(CreateQuizScreenAction.OnDismiss) },
+        transitionProgress = enterProgressState.value,
+        navigationIcon = {
+            IconButton(onClick = { onAction(CreateQuizScreenAction.OnDismiss) }) {
+                Icon(Icons.Rounded.Close, contentDescription = "Close")
+            }
         }
-    ) { innerPadding ->
+    ) { contentModifier ->
         Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(innerPadding)
+            modifier = contentModifier
+                .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(24.dp),
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 24.dp)
+                .padding(WindowInsets.navigationBars.asPaddingValues()),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             Column(

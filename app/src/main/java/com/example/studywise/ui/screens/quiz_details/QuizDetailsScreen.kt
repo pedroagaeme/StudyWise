@@ -1,8 +1,5 @@
 package com.example.studywise.ui.screens.quiz_details
 
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -10,18 +7,16 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.MoreVert
@@ -29,9 +24,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -41,14 +36,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.studywise.ui.components.stack_screen.StackScreen
 import com.example.studywise.ui.components.icon_button_with_offset.IconButtonOffsetDirection
 import com.example.studywise.ui.components.icon_button_with_offset.IconButtonWithOffset
 import com.example.studywise.ui.components.ProgressIndicatorBox
@@ -82,11 +76,6 @@ fun QuizDetailsScreenContent(
     onContinueAttemptClick: (String) -> Unit,
     onCreateNewAttemptClick: (String) -> Unit,
 ) {
-    val transitionProgress by animateFloatAsState(
-        targetValue = if (state.isLoading) 0f else 1f,
-        animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing),
-        label = "quizDetailsEnter"
-    )
     var selectedAttemptIndex by rememberSaveable { mutableIntStateOf(0) }
     LaunchedEffect(state.attempts.size) {
         if (state.attempts.isEmpty()) {
@@ -98,53 +87,28 @@ fun QuizDetailsScreenContent(
     val currentAttemptPosition = if (state.attempts.isEmpty()) 0 else selectedAttemptIndex + 1
     val selectedAttempt = state.attempts.getOrNull(selectedAttemptIndex)
 
-    Surface(
-        modifier = modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.surfaceContainerLowest
+    StackScreen(
+        title = "Quiz Details",
+        modifier = modifier,
+        transitionProgress = if (state.isLoading) 0f else 1f,
+        onBackClick = goBack,
+        actions = {
+            IconButton(onClick = {}) {
+                Icon(
+                    imageVector = Icons.Rounded.MoreVert,
+                    contentDescription = "More options"
+                )
+            }
+        }
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
+            modifier = it
+                .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(horizontal = 20.dp)
-                .graphicsLayer {
-                    scaleX = 0.92f + (0.08f * transitionProgress)
-                    scaleY = 0.92f + (0.08f * transitionProgress)
-                }
-                .alpha(transitionProgress),
+                .padding(WindowInsets.navigationBars.asPaddingValues()),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            // Top Bar
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButtonWithOffset(
-                    onClick = goBack,
-                    offsetDirection = IconButtonOffsetDirection.Left
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                        contentDescription = "Back"
-                    )
-                }
-                Text(
-                    text = "Quiz Details",
-                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
-                )
-                IconButtonWithOffset(
-                    onClick = {},
-                    offsetDirection = IconButtonOffsetDirection.Right
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.MoreVert,
-                        contentDescription = "More options"
-                    )
-                }
-            }
 
             // Header Info
             Column(

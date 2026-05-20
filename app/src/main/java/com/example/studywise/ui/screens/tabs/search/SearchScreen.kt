@@ -1,5 +1,6 @@
 package com.example.studywise.ui.screens.tabs.search
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -53,14 +54,19 @@ fun SearchScreenContent(
     onAction: (SearchScreenAction) -> Unit
 ) {
     Surface(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize(),
         color = MaterialTheme.colorScheme.surfaceContainerLowest
     ) {
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            Column {
+            Column{
                 CenterAlignedTopAppBar(
+                    modifier = Modifier
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(top = innerPadding.calculateTopPadding() - 16.dp)
+                    ,
                     title = {
                         OutlinedTextField(
                             value = state.searchQuery,
@@ -83,9 +89,6 @@ fun SearchScreenContent(
                             textStyle = MaterialTheme.typography.bodyLarge
                         )
                     },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    )
                 )
                 HorizontalDivider(
                     color = MaterialTheme.colorScheme.outlineVariant,

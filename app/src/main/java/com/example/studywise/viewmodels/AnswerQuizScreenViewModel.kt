@@ -18,6 +18,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -42,6 +43,8 @@ class AnswerQuizScreenViewModel @AssistedInject constructor(
 
     private fun loadQuestionPile() {
         viewModelScope.launch {
+            val quizName = repository.getQuizById(quizId).firstOrNull()?.title ?: "Quiz"
+
             // 1. Fetch the data
             val questions = repository.getQuestionsByQuizId(quizId)
 
@@ -76,6 +79,7 @@ class AnswerQuizScreenViewModel @AssistedInject constructor(
                         val targetIndex = orderedPile.indexOfFirst { it.id == firstUnansweredQuestion.questionId}
                         _uiState.update {
                             it.copy(
+                                quizName = quizName,
                                 currentAttemptId = lastAttempt.id,
                                 questionList = orderedPile,
                                 targetIndex = targetIndex
@@ -101,6 +105,7 @@ class AnswerQuizScreenViewModel @AssistedInject constructor(
 
             _uiState.update { currentState ->
                 currentState.copy(
+                    quizName = quizName,
                     currentAttemptId = quizAttemptId,
                     questionList = initialQuestionList ,
                     targetIndex = 0

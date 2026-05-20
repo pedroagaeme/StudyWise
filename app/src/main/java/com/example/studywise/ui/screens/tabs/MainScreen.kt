@@ -91,6 +91,7 @@ fun MainScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .consumeWindowInsets(innerPadding)
         ) {
 
             when (selectedTab) {

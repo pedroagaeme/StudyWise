@@ -9,19 +9,14 @@ import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import androidx.compose.ui.zIndex
-import com.example.studywise.ui.components.custom_progress_indicators.CustomLinearProgressIndicator
 import com.example.studywise.ui.screens.answer_quiz.AnswerQuizScreenUiState
 import com.example.studywise.ui.screens.answer_quiz.components.question_pile.question_card.QuestionCard
 import com.example.studywise.ui.screens.answer_quiz.components.question_pile.question_card.QuestionCardUiState
@@ -30,7 +25,6 @@ import com.example.studywise.ui.theme.LogoGreen
 import com.example.studywise.ui.theme.LogoOrange
 import com.example.studywise.ui.theme.LogoPink
 import com.example.studywise.ui.theme.LogoTeal
-import kotlin.math.min
 
 // Since we want to simulate the feeling of a pile of cards,
 // we use graphicsLayer to simulate the 3d position of the cards in 2d
@@ -90,18 +84,6 @@ fun QuestionPile(
     onAction: (AnswerQuizScreenAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Calculate the values for the progress bar
-    val questionCount = state.questionList.count()
-    val currentQuestionNumber = if (questionCount == 0) 0 else min(state.targetIndex + 1, questionCount)
-    val paddedQuestionCount = questionCount.toString().padStart(2, '0')
-    val paddedQuestionNumber = currentQuestionNumber.toString().padStart(2, '0')
-
-    val targetProgress = if (questionCount == 0) 0f else currentQuestionNumber.toFloat() / questionCount
-    val progress by animateFloatAsState(
-        targetValue = targetProgress,
-        animationSpec = tween(600)
-    )
-
     // Animate cards whenever a new index value is provided
     val animatedCurrentIndex = remember { Animatable(state.targetIndex.toFloat()) }
 
@@ -191,27 +173,10 @@ fun QuestionPile(
 
     val currentIndexValue = animatedCurrentIndex.value
     Column(modifier = modifier) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            CustomLinearProgressIndicator(
-                modifier = Modifier
-                    .weight(1f),
-                progress
-            )
-            Text(
-                text = "${paddedQuestionNumber}/${paddedQuestionCount}",
-                style = MaterialTheme.typography.titleLarge.copy(
-                    letterSpacing = 2.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            )
-        }
         Box(
             modifier = Modifier
-                .fillMaxSize(),
+                .fillMaxWidth()
+                .aspectRatio(0.55f),
             contentAlignment = Alignment.Center
         ) {
             // Animate only the cards that should be visible
