@@ -23,5 +23,11 @@ sealed interface Route: NavKey {
         val forceNewAttempt: Boolean = false
     ) : Route, NavKey
 
+    @Serializable
+    data class ReviewAttempt(
+        val quizId: String,
+        val attemptId: String,
+    ) : Route, NavKey
+
 }
 

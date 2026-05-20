@@ -13,9 +13,11 @@ import com.example.studywise.ui.screens.answer_quiz.AnswerQuizScreen
 import com.example.studywise.ui.screens.create_quiz.CreateQuizScreen
 import com.example.studywise.ui.screens.login.LoginScreen
 import com.example.studywise.ui.screens.quiz_details.QuizDetailsScreen
+import com.example.studywise.ui.screens.review_attempt.ReviewAttemptScreen
 import com.example.studywise.ui.screens.tabs.MainScreen
 import com.example.studywise.viewmodels.AnswerQuizScreenViewModel
 import com.example.studywise.viewmodels.QuizDetailsViewModel
+import com.example.studywise.viewmodels.ReviewAttemptViewModel
 
 private fun <T> MutableList<T>.replaceTop(item: T) {
     if (isNotEmpty()) removeAt(lastIndex)
@@ -80,6 +82,9 @@ fun NavigationRoot(
                             },
                             onCreateNewAttemptClick = { quizId ->
                                 backStack.add(Route.AnswerQuiz(quizId = quizId, forceNewAttempt = true))
+                            },
+                            onReviewAttemptClick = { quizId, attemptId ->
+                                backStack.add(Route.ReviewAttempt(quizId = quizId, attemptId = attemptId))
                             }
                         )
                     }
@@ -100,6 +105,20 @@ fun NavigationRoot(
                             creationCallback = { factory -> factory.create(key.quizId, key.forceNewAttempt) }
                         )
                         AnswerQuizScreen(
+                            goBack = { backStack.pop() },
+                            viewModel = viewModel,
+                            onFinishQuiz = { quizId, attemptId ->
+                                backStack.replaceTop(Route.ReviewAttempt(quizId = quizId, attemptId = attemptId))
+                            }
+                        )
+                    }
+                }
+                is Route.ReviewAttempt -> {
+                    NavEntry(key) {
+                        val viewModel = hiltViewModel<ReviewAttemptViewModel, ReviewAttemptViewModel.Factory>(
+                            creationCallback = { factory -> factory.create(key.quizId, key.attemptId) }
+                        )
+                        ReviewAttemptScreen(
                             goBack = { backStack.pop() },
                             viewModel = viewModel
                         )

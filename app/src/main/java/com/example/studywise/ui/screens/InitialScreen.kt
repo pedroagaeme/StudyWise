@@ -1,4 +1,4 @@
-package com.example.studywise.ui.screens
+package com.example.triviawise.ui.screens
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -27,17 +27,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.studywise.R
-import com.example.studywise.ui.components.question_zigzag_display.QuestionZigzagDisplay
-import com.example.studywise.ui.theme.AppTheme
+import com.example.triviawise.R
+import com.example.triviawise.ui.components.question_zigzag_display.QuestionZigzagDisplay
+import com.example.triviawise.ui.theme.AppTheme
 
 @Composable
 fun InitialScreen(
     modifier: Modifier = Modifier,
     replaceWithLoginRoute: () -> Unit = {}
 ) {
-    val studyWiseLogo = ImageVector.vectorResource(id = R.drawable.studywise_logo)
-    val painter = rememberVectorPainter(image = studyWiseLogo)
+    val triviaWiseLogo = ImageVector.vectorResource(id = R.drawable.studywise_logo)
+    val painter = rememberVectorPainter(image = triviaWiseLogo)
 
     Column(
         modifier = modifier
@@ -59,7 +59,7 @@ fun InitialScreen(
                 }
             }
             Text(
-                "StudyWise",
+                "TriviaWise",
                 style = MaterialTheme.typography.headlineMedium.copy(
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold,

@@ -37,6 +37,7 @@ fun AnswerQuizScreen(
     modifier: Modifier = Modifier,
     viewModel: AnswerQuizScreenViewModel = hiltViewModel(),
     goBack: () -> Unit = {},
+    onFinishQuiz: (quizId: String, attemptId: String) -> Unit = { _, _ -> },
 ) {
 
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -45,7 +46,7 @@ fun AnswerQuizScreen(
     LaunchedEffect(state.pendingEffect) {
         state.pendingEffect.let { effect ->
             when (effect) {
-                is AnswerQuizUiEffect.FinishQuiz -> goBack()
+                is AnswerQuizUiEffect.FinishQuiz -> onFinishQuiz(effect.quizId, effect.attemptId)
                 else -> Unit
             }
         }

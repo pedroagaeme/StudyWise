@@ -104,6 +104,10 @@ interface QuizDao {
     @Query("SELECT * FROM quiz_attempt WHERE quizId = :quizId ORDER BY createdAt DESC")
     fun getQuizAttemptsByQuizIdFlow(quizId: String): Flow<List<QuizAttemptFullInfo>>
 
+    @Transaction
+    @Query("SELECT * FROM quiz_attempt WHERE id = :attemptId LIMIT 1")
+    fun getQuizAttemptByIdFlow(attemptId: String): Flow<QuizAttemptFullInfo?>
+
 
     @Query("SELECT * FROM question_attempt WHERE quizAttemptId = :quizAttemptId ORDER BY sortOrder")
     suspend fun getQuestionsAttemptedByQuizAttemptId(quizAttemptId: String): List<QuestionAttemptEntity>

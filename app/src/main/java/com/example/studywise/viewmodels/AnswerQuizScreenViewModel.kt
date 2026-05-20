@@ -191,7 +191,10 @@ class AnswerQuizScreenViewModel @AssistedInject constructor(
         if (questionIndex + 1 >= _uiState.value.questionList.size) {
             _uiState.update { currentState ->
                 currentState.copy(
-                    pendingEffect = AnswerQuizUiEffect.FinishQuiz
+                    pendingEffect = AnswerQuizUiEffect.FinishQuiz(
+                        quizId = quizId,
+                        attemptId = currentState.currentAttemptId ?: ""
+                    )
                 )
             }
         }

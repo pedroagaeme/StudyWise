@@ -49,7 +49,6 @@ import com.example.studywise.ui.components.icon_button_with_offset.IconButtonWit
 import com.example.studywise.ui.components.ProgressIndicatorBox
 import com.example.studywise.ui.components.custom_progress_indicators.CustomLinearProgressIndicator
 import com.example.studywise.viewmodels.QuizDetailsViewModel
-import kotlinx.coroutines.flow.collect
 
 @Composable
 fun QuizDetailsScreen(
@@ -58,6 +57,7 @@ fun QuizDetailsScreen(
     goBack: () -> Unit = {},
     onContinueAttemptClick: (String) -> Unit,
     onCreateNewAttemptClick: (String) -> Unit,
+    onReviewAttemptClick: (String, String) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -67,7 +67,8 @@ fun QuizDetailsScreen(
         onScrollChanged = viewModel::onScrollChanged,
         goBack = goBack,
         onContinueAttemptClick = onContinueAttemptClick,
-        onCreateNewAttemptClick = onCreateNewAttemptClick
+        onCreateNewAttemptClick = onCreateNewAttemptClick,
+        onReviewAttemptClick = onReviewAttemptClick,
     )
 }
 
@@ -79,6 +80,7 @@ fun QuizDetailsScreenContent(
     goBack: () -> Unit = {},
     onContinueAttemptClick: (String) -> Unit,
     onCreateNewAttemptClick: (String) -> Unit,
+    onReviewAttemptClick: (String, String) -> Unit,
 ) {
     var selectedAttemptIndex by rememberSaveable { mutableIntStateOf(0) }
     LaunchedEffect(state.attempts.size) {
@@ -274,6 +276,16 @@ fun QuizDetailsScreenContent(
                                 shape = RoundedCornerShape(12.dp)
                             ) {
                                 Text("Continue attempt", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold))
+                            }
+                        } else {
+                            OutlinedButton(
+                                modifier = Modifier.fillMaxWidth(),
+                                onClick = { onReviewAttemptClick(state.quizId, selectedAttempt.attemptId) },
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                                contentPadding = PaddingValues(vertical = 12.dp),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Review attempt", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold))
                             }
                         }
                     }
