@@ -19,6 +19,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -53,6 +54,7 @@ fun AnswerQuizScreen(
         modifier = modifier,
         state = state,
         onAction = onAction,
+        onScrollChanged = viewModel::onScrollChanged,
         goBack = goBack
     )
 }
@@ -62,6 +64,7 @@ fun AnswerQuizScreenContent(
     modifier: Modifier = Modifier,
     state: AnswerQuizScreenUiState,
     onAction: (AnswerQuizScreenAction) -> Unit,
+    onScrollChanged: (Int) -> Unit = {},
     goBack: () -> Unit = {}
 ) {
     val questionCount = state.questionList.size
@@ -82,16 +85,24 @@ fun AnswerQuizScreenContent(
         enterProgressState.value = 1f
     }
 
+    val scrollState = rememberScrollState(state.currentScroll)
+    LaunchedEffect(scrollState) {
+        snapshotFlow { scrollState.value }.collect { currentScroll ->
+            onScrollChanged(currentScroll)
+        }
+    }
+
     StackScreen(
         title = "Answer Quiz",
         modifier = modifier,
         onBackClick = goBack,
-        transitionProgress = enterProgressState.value
+        transitionProgress = enterProgressState.value,
+        currentScroll = state.currentScroll
     ) { contentModifier ->
         Column(
             modifier = contentModifier
                 .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 40.dp)
                 .padding(WindowInsets.navigationBars.asPaddingValues()),

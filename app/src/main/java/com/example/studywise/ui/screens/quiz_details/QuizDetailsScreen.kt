@@ -34,6 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.SpanStyle
@@ -48,6 +49,7 @@ import com.example.studywise.ui.components.icon_button_with_offset.IconButtonWit
 import com.example.studywise.ui.components.ProgressIndicatorBox
 import com.example.studywise.ui.components.custom_progress_indicators.CustomLinearProgressIndicator
 import com.example.studywise.viewmodels.QuizDetailsViewModel
+import kotlinx.coroutines.flow.collect
 
 @Composable
 fun QuizDetailsScreen(
@@ -62,6 +64,7 @@ fun QuizDetailsScreen(
     QuizDetailsScreenContent(
         modifier = modifier,
         state = state,
+        onScrollChanged = viewModel::onScrollChanged,
         goBack = goBack,
         onContinueAttemptClick = onContinueAttemptClick,
         onCreateNewAttemptClick = onCreateNewAttemptClick
@@ -72,6 +75,7 @@ fun QuizDetailsScreen(
 fun QuizDetailsScreenContent(
     modifier: Modifier = Modifier,
     state: QuizDetailsUiState,
+    onScrollChanged: (Int) -> Unit = {},
     goBack: () -> Unit = {},
     onContinueAttemptClick: (String) -> Unit,
     onCreateNewAttemptClick: (String) -> Unit,
@@ -87,10 +91,18 @@ fun QuizDetailsScreenContent(
     val currentAttemptPosition = if (state.attempts.isEmpty()) 0 else selectedAttemptIndex + 1
     val selectedAttempt = state.attempts.getOrNull(selectedAttemptIndex)
 
+    val scrollState = rememberScrollState(state.currentScroll)
+    LaunchedEffect(scrollState) {
+        snapshotFlow { scrollState.value }.collect { currentScroll ->
+            onScrollChanged(currentScroll)
+        }
+    }
+
     StackScreen(
         title = "Quiz Details",
         modifier = modifier,
         transitionProgress = if (state.isLoading) 0f else 1f,
+        currentScroll = state.currentScroll,
         onBackClick = goBack,
         actions = {
             IconButton(onClick = {}) {
@@ -104,7 +116,7 @@ fun QuizDetailsScreenContent(
         Column(
             modifier = it
                 .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(horizontal = 20.dp)
                 .padding(WindowInsets.navigationBars.asPaddingValues()),
             verticalArrangement = Arrangement.spacedBy(24.dp)

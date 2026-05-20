@@ -6,5 +6,6 @@ data class AnswerQuizScreenUiState (
     val questionList: List<QuestionCardUiState> = listOf(),
     val currentAttemptId: String? = null,
     val targetIndex: Int = 0,
+    val currentScroll: Int = 0,
     val pendingEffect: AnswerQuizUiEffect? = null,
 )

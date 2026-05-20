@@ -41,6 +41,12 @@ class AnswerQuizScreenViewModel @AssistedInject constructor(
         loadQuestionPile()
     }
 
+    fun onScrollChanged(currentScroll: Int) {
+        _uiState.update { currentState ->
+            if (currentState.currentScroll == currentScroll) currentState else currentState.copy(currentScroll = currentScroll)
+        }
+    }
+
     private fun loadQuestionPile() {
         viewModelScope.launch {
             val quizName = repository.getQuizById(quizId).firstOrNull()?.title ?: "Quiz"

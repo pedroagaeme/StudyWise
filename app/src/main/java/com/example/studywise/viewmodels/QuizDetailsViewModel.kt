@@ -38,6 +38,13 @@ class QuizDetailsViewModel @AssistedInject constructor(
 		observeQuizDetails()
 	}
 
+	@Suppress("unused")
+	fun onScrollChanged(currentScroll: Int) {
+		_uiState.update { currentState ->
+			if (currentState.currentScroll == currentScroll) currentState else currentState.copy(currentScroll = currentScroll)
+		}
+	}
+
 	private fun observeQuizDetails() {
 		combine(
 			repository.getQuizById(quizId),

@@ -10,6 +10,7 @@ data class QuizDetailsUiState(
     val bestScore: Int? = null,
     val attempts: List<AttemptCardUiState> = emptyList(),
     val isLoading: Boolean = true,
+    val currentScroll: Int = 0,
 ) {
     val averageProgress: Float?
         get() = if (averageScore == null || questionCount <= 0) {
