@@ -1,4 +1,4 @@
-package com.example.triviawise.ui.screens
+package com.example.studywise.ui.screens
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -27,9 +27,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.triviawise.R
-import com.example.triviawise.ui.components.question_zigzag_display.QuestionZigzagDisplay
-import com.example.triviawise.ui.theme.AppTheme
+import com.example.studywise.R
+import com.example.studywise.ui.components.question_zigzag_display.QuestionZigzagDisplay
+import com.example.studywise.ui.theme.AppTheme
 
 @Composable
 fun InitialScreen(
