@@ -11,6 +11,7 @@ import com.example.studywise.ui.screens.answer_quiz.components.question_pile.que
 import com.example.studywise.ui.screens.answer_quiz.components.question_pile.question_card.QuestionCardUiState
 import com.example.studywise.ui.screens.answer_quiz.AnswerQuizScreenAction
 import com.example.studywise.ui.screens.answer_quiz.AnswerQuizUiEffect
+import com.example.studywise.utils.shuffledWithHash
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -80,7 +81,7 @@ class AnswerQuizScreenViewModel @AssistedInject constructor(
                     if (firstUnansweredQuestion != null) {
                         val orderedPile = lastAttempt.questionAttempts.mapNotNull { questionAttempt ->
                             uiQuestionList.find { question -> question.id == questionAttempt.questionId }?.let { baseQuestion ->
-                                baseQuestion.copy(answers = shuffleAnswersWithHash(baseQuestion.answers, lastAttempt.id))
+                                baseQuestion.copy(answers = baseQuestion.answers.shuffledWithHash("${lastAttempt.id}:${questionAttempt.questionId}"))
                             }
                         }
                         val targetIndex = orderedPile.indexOfFirst { it.id == firstUnansweredQuestion.questionId}
@@ -107,7 +108,8 @@ class AnswerQuizScreenViewModel @AssistedInject constructor(
             val quizAttemptId = repository.createQuizAttempt(quizId, shuffleMap)
 
             val initialQuestionList = shuffleOrder.map { index ->
-                uiQuestionList[index].copy(answers = shuffleAnswersWithHash(uiQuestionList[index].answers, quizAttemptId ?: ""))
+                val question = uiQuestionList[index]
+                question.copy(answers = question.answers.shuffledWithHash("${quizAttemptId ?: ""}:${question.id}"))
             }
 
             _uiState.update { currentState ->
@@ -122,11 +124,6 @@ class AnswerQuizScreenViewModel @AssistedInject constructor(
         }
     }
 
-    private fun shuffleAnswersWithHash(answers: List<AnswerUiState>, seed: String): List<AnswerUiState> {
-        val hash = seed.hashCode().toLong()
-        val random = kotlin.random.Random(hash)
-        return answers.shuffled(random)
-    }
 
 
     fun onAction(action: AnswerQuizScreenAction) {

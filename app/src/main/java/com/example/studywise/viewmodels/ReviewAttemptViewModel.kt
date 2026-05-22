@@ -1,3 +1,5 @@
+@file:Suppress("UnusedImport")
+
 package com.example.studywise.viewmodels
 
 import androidx.lifecycle.ViewModel
@@ -6,15 +8,15 @@ import com.example.studywise.data.repository.QuizRepository
 import com.example.studywise.ui.screens.review_attempt.ReviewAttemptUiState
 import com.example.studywise.ui.screens.review_attempt.ReviewOptionUiState
 import com.example.studywise.ui.screens.review_attempt.ReviewQuestionUiState
+import com.example.studywise.utils.shuffledWithHash
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -34,7 +36,7 @@ class ReviewAttemptViewModel @AssistedInject constructor(
     }
 
     private val _uiState = MutableStateFlow(ReviewAttemptUiState())
-    val uiState: StateFlow<ReviewAttemptUiState> = _uiState.asStateFlow()
+    val uiState = _uiState.asStateFlow()
 
     init {
         observeReviewAttempt()
@@ -92,7 +94,7 @@ class ReviewAttemptViewModel @AssistedInject constructor(
                             number = index + 1,
                             description = question.description,
                             explanation = question.explanation,
-                            options = question.answerOptions.mapIndexed { optionIndex, answerOption ->
+                            options = question.answerOptions.shuffledWithHash("${attemptId}:${questionAttempt.questionId}").mapIndexed { optionIndex, answerOption ->
                                 ReviewOptionUiState(
                                     id = answerOption.id,
                                     label = "option ${(97 + optionIndex).toChar()}",
