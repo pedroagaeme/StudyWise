@@ -19,7 +19,6 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments["appwriteTestEmail"] =
             (project.findProperty("appwriteTestEmail") as String?) ?: ""

@@ -250,7 +250,12 @@ object Appwrite {
             var latest = created
             while (latest.status !in TERMINAL_STATUSES) {
                 delay(POLL_INTERVAL_MS)
-                latest = functions.getExecution(functionId, latest.id)
+                try {
+                    latest = functions.getExecution(functionId, latest.id)
+                }
+                catch (e: Exception) {
+                    continue
+                }
             }
             latest
         }

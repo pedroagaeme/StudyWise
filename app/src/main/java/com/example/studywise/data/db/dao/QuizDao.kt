@@ -16,7 +16,7 @@ import java.time.Instant
 
 @Dao
 interface QuizDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(quizCollection: QuizCollectionEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -77,6 +77,9 @@ interface QuizDao {
 
     @Query("SELECT QC.* FROM quiz_collection QC JOIN quiz Q ON QC.id = Q.quizCollectionId WHERE Q.id = :quizId")
     suspend fun getQuizCollectionByQuizId(quizId: String): QuizCollectionEntity?
+
+    @Query("SELECT * FROM quiz_collection WHERE name = :name LIMIT 1")
+    suspend fun getCollectionByName(name: String): QuizCollectionEntity?
 
     @Query("SELECT * FROM QuizBasicInfoView ORDER BY lastAttemptedAt DESC LIMIT :limit")
     fun getMostRecentQuizzes(limit: Int): Flow<List<QuizBasicInfo>>

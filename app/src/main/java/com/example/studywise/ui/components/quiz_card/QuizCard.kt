@@ -51,7 +51,10 @@ fun AdditionalInfoRow(quiz: QuizDto) {
             style = MaterialTheme.typography.bodySmall.copy(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Medium
-            )
+            ),
+            maxLines = 1,
+            overflow = TextOverflow.Visible
+
         )
     }
 }

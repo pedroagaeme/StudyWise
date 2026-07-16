@@ -59,7 +59,7 @@ fun InitialScreen(
                 }
             }
             Text(
-                "TriviaWise",
+                "StudyWise",
                 style = MaterialTheme.typography.headlineMedium.copy(
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold,

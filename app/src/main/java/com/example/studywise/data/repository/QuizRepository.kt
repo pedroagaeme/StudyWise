@@ -171,7 +171,11 @@ class QuizRepository @Inject constructor(
     private suspend fun uploadQuizLocal(request: UploadQuizRequestData, quizId: String): String? {
         val now = Instant.now().toString()
         try {
-            val quizCollectionId = Appwrite.generateNewId()
+
+            val existingCollection = quizDao.getCollectionByName(request.quizCollection.name)
+
+            val quizCollectionId = existingCollection?.id ?: Appwrite.generateNewId()
+
             return quizDao.insertQuizWithQuestionsAndAnswers(
                 quizCollection = QuizCollectionEntity(
                     id = quizCollectionId,
