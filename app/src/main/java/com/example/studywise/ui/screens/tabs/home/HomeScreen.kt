@@ -1,17 +1,22 @@
 package com.example.studywise.ui.screens.tabs.home
+
+import androidx.compose.animation.*
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -40,7 +45,8 @@ fun HomeScreen(
                     uiState.listState.animateScrollBy(
                         effect.offset,
                         tween(700)
-                    ) }
+                    )
+                }
                 is HomeScreenEffect.NavigateToQuizDetails -> {
                     pushQuizDetailsRoute(effect.quizId)
                 }
@@ -49,11 +55,41 @@ fun HomeScreen(
         }
     }
 
-    HomeScreenContent(
-        innerPadding = innerPadding,
-        state = uiState,
-        onAction = onAction,
-    )
+    AnimatedContent(
+        targetState = uiState.currentStep,
+        transitionSpec = { fadeIn() togetherWith fadeOut() },
+        label = "HomeStepTransition"
+    ) { step ->
+        when (step) {
+            HomeStep.LOADING -> {
+                Box(
+                    modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerLowest),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                }
+            }
+            HomeStep.EMPTY -> {
+                Box(
+                    modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerLowest),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No quizzes found. Create your first one!",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            HomeStep.HAS_CONTENT -> {
+                HomeScreenContent(
+                    innerPadding = innerPadding,
+                    state = uiState,
+                    onAction = onAction,
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -78,33 +114,37 @@ fun HomeScreenContent(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Recent Section
-            item {
-                SectionHeader("Recent", modifier = horizontalPaddingModifier)
-            }
-            item {
-                RecentQuizzesBlock(
-                    quizzes = state.recentQuizzes,
-                    onAction = onAction,
-                )
+            if (state.recentQuizzes.isNotEmpty()) {
+                item {
+                    SectionHeader("Recent", modifier = horizontalPaddingModifier)
+                }
+                item {
+                    RecentQuizzesBlock(
+                        quizzes = state.recentQuizzes,
+                        onAction = onAction,
+                    )
+                }
             }
 
             // Collections Section
-            item {
-                SectionHeader("Collections", modifier = horizontalPaddingModifier)
-            }
+            if (state.collections.isNotEmpty()) {
+                item {
+                    SectionHeader("Collections", modifier = horizontalPaddingModifier)
+                }
 
-            state.collections.forEach { collection ->
-                // Animated expansion/collapse for quizzes
-                item(key = "${collection.id}_quizzes") {
-                    CollectionExpandableBlock(
-                        collection = collection,
-                        expanded = state.collectionsExpandableState[collection.id] ?: false,
-                        onExpandClick = {
-                            onAction(HomeScreenAction.OnToggleCollectionExpandableState(collection.id))
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        onAction = onAction
-                    )
+                state.collections.forEach { collection ->
+                    // Animated expansion/collapse for quizzes
+                    item(key = "${collection.id}_quizzes") {
+                        CollectionExpandableBlock(
+                            collection = collection,
+                            expanded = state.collectionsExpandableState[collection.id] ?: false,
+                            onExpandClick = {
+                                onAction(HomeScreenAction.OnToggleCollectionExpandableState(collection.id))
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            onAction = onAction
+                        )
+                    }
                 }
             }
         }
@@ -127,7 +167,6 @@ fun CollectionExpandableBlock(
         transitionSpec = { tween(durationMillis = contentTransitionDuration) },
         label = "expandProgress"
     ) { if (it) 1f else 0f }
-    val scrollOffset = remember { mutableFloatStateOf(0f) }
 
     // Animate vertical space for quizzes
     val cardVerticalPaddingValue = 6
@@ -251,6 +290,6 @@ fun AnimatedQuizCard(
 @Composable
 fun HomeScreenPreview() {
     AppTheme {
-        HomeScreenContent(state = HomeScreenUiState(), onAction = {})
+        HomeScreenContent(state = HomeScreenUiState(currentStep = HomeStep.HAS_CONTENT), onAction = {})
     }
 }

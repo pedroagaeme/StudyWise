@@ -1,5 +1,6 @@
 package com.example.studywise.ui.screens.tabs.search
 
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -8,8 +9,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -61,12 +64,11 @@ fun SearchScreenContent(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            Column{
+            Column {
                 CenterAlignedTopAppBar(
                     modifier = Modifier
                         .background(MaterialTheme.colorScheme.surface)
-                        .padding(top = innerPadding.calculateTopPadding() - 16.dp)
-                    ,
+                        .padding(top = maxOf(0.dp, innerPadding.calculateTopPadding() - 16.dp)),
                     title = {
                         OutlinedTextField(
                             value = state.searchQuery,
@@ -96,21 +98,56 @@ fun SearchScreenContent(
                 )
             }
 
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
-                contentPadding = PaddingValues(
-                    top = 8.dp,
-                    bottom = innerPadding.calculateBottomPadding() + 8.dp
-                ),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(state.filteredQuizzes, key = { it.id }) { quiz ->
-                    QuizCard(
-                        quiz = quiz,
-                        onClick = { onAction(SearchScreenAction.OnQuizCardClick(quiz.id)) }
-                    )
+            AnimatedContent(
+                targetState = state.currentStep,
+                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                label = "SearchStepTransition",
+                modifier = Modifier.weight(1f)
+            ) { step ->
+                when (step) {
+                    SearchStep.LOADING -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                    SearchStep.EMPTY -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 24.dp)
+                                .padding(bottom = innerPadding.calculateBottomPadding()),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                textAlign = TextAlign.Center,
+                                text = if (state.searchQuery.isEmpty()) "Start searching for quizzes" else "No results found for \"${state.searchQuery}\"",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    SearchStep.HAS_CONTENT -> {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp),
+                            contentPadding = PaddingValues(
+                                top = 16.dp,
+                                bottom = innerPadding.calculateBottomPadding() + 16.dp
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(state.filteredQuizzes, key = { it.id }) { quiz ->
+                                QuizCard(
+                                    quiz = quiz,
+                                    onClick = { onAction(SearchScreenAction.OnQuizCardClick(quiz.id)) }
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -122,7 +159,7 @@ fun SearchScreenContent(
 fun SearchScreenPreview() {
     AppTheme {
         SearchScreenContent(
-            state = SearchScreenUiState(),
+            state = SearchScreenUiState(currentStep = SearchStep.HAS_CONTENT),
             onAction = {}
         )
     }

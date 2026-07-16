@@ -6,12 +6,11 @@ import com.example.studywise.data.repository.AuthRepository
 import com.example.studywise.ui.screens.login.LoginScreenAction
 import com.example.studywise.ui.screens.login.LoginScreenEffect
 import com.example.studywise.ui.screens.login.LoginScreenUiState
+import com.example.studywise.ui.screens.login.LoginStep
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -31,6 +30,10 @@ class LoginScreenViewModel @Inject constructor(
                 _uiState.update { currentState ->
                     currentState.copy(pendingEffect = LoginScreenEffect.LoginSuccess)
                 }
+            } else {
+                _uiState.update { currentState ->
+                    currentState.copy(currentStep = LoginStep.NOT_LOADING)
+                }
             }
         }
     }
@@ -45,6 +48,7 @@ class LoginScreenViewModel @Inject constructor(
         when (action) {
             is LoginScreenAction.OnLoginButtonClick -> {
                 viewModelScope.launch {
+                    _uiState.update { it.copy(currentStep = LoginStep.LOADING) }
                     try {
                         authRepository.login(
                             email = _uiState.value.email,
@@ -55,7 +59,10 @@ class LoginScreenViewModel @Inject constructor(
                         }
                     } catch (e: Exception) {
                         _uiState.update { currentState ->
-                            currentState.copy(pendingEffect = LoginScreenEffect.LoginFailure(e.message ?: "Unknown error"))
+                            currentState.copy(
+                                currentStep = LoginStep.NOT_LOADING,
+                                pendingEffect = LoginScreenEffect.LoginFailure(e.message ?: "Unknown error")
+                            )
                         }
                     }
                 }

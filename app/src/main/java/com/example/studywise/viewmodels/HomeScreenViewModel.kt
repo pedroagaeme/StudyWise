@@ -1,12 +1,12 @@
 package com.example.studywise.viewmodels
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.studywise.data.repository.QuizRepository
 import com.example.studywise.ui.screens.tabs.home.HomeScreenAction
 import com.example.studywise.ui.screens.tabs.home.HomeScreenEffect
 import com.example.studywise.ui.screens.tabs.home.HomeScreenUiState
+import com.example.studywise.ui.screens.tabs.home.HomeStep
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,7 +34,12 @@ class HomeScreenViewModel @Inject constructor(
             repository.getCollectionsWithQuizzes()
         ) { recent, collections ->
             _uiState.update { currentState ->
+                val step = when {
+                    recent.isEmpty() && collections.isEmpty() -> HomeStep.EMPTY
+                    else -> HomeStep.HAS_CONTENT
+                }
                 currentState.copy(
+                    currentStep = step,
                     recentQuizzes = recent,
                     collections = collections,
                     // New collections are initially collapsed

@@ -274,6 +274,18 @@ class QuizRepository @Inject constructor(
         }
     }
 
+    fun getCollections(): Flow<List<QuizCollectionDto>> {
+        return quizDao.getCollections().map { collectionList ->
+            collectionList.map { collection ->
+                QuizCollectionDto(
+                    id = collection.id,
+                    name = collection.name,
+                    quizzes = emptyList()
+                )
+            }
+        }
+    }
+
     suspend fun createQuizAttempt(quizId: String, shuffleMap: Map<String, Int>): String? {
         val now = Instant.now().toString()
         val quizAttempt = QuizAttemptEntity(
@@ -325,6 +337,27 @@ class QuizRepository @Inject constructor(
 
         quizDao.update(
             questionAttempt = questionAttempt
+        )
+    }
+
+    suspend fun updateQuizDetails(
+        quizId: String,
+        title: String,
+        collectionName: String,
+    ) {
+        val now = Instant.now().toString()
+        val quiz = quizDao.getQuizWithQuestionsById(quizId)?.quiz ?: return
+        val quizCollection = quizDao.createIfDoesNotExistCollection(
+            collectionName = collectionName,
+            generateNewId = { Appwrite.generateNewId() },
+            now = { now }
+        )
+
+        quizDao.updateQuizData(
+            quizId = quizId,
+            title = title,
+            collectionId = quizCollection.id,
+            updatedAt = now
         )
     }
 

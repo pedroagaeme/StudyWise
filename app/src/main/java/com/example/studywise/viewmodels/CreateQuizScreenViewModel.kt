@@ -9,9 +9,13 @@ import androidx.lifecycle.viewModelScope
 import com.example.studywise.data.repository.QuizRepository
 import com.example.studywise.ui.screens.create_quiz.AttachmentPreview
 import com.example.studywise.ui.screens.create_quiz.AttachmentType
+import com.example.studywise.ui.screens.create_quiz.CollectionMode
 import com.example.studywise.ui.screens.create_quiz.CreateQuizScreenAction
 import com.example.studywise.ui.screens.create_quiz.CreateQuizScreenEffect
+import com.example.studywise.ui.screens.create_quiz.CreateQuizStep
 import com.example.studywise.ui.screens.create_quiz.CreateQuizUiState
+import com.example.studywise.ui.screens.create_quiz.QuizDifficulty
+import com.example.studywise.ui.screens.create_quiz.QuizSize
 import com.example.studywise.utils.uriToFile
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -32,94 +36,130 @@ class CreateQuizScreenViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(CreateQuizUiState())
     val uiState: StateFlow<CreateQuizUiState> = _uiState.asStateFlow()
 
+    init {
+        loadCollections()
+    }
 
+    private fun loadCollections() {
+        viewModelScope.launch {
+            repository.getCollections().collect { collections ->
+                _uiState.update { it.copy(existingCollections = collections.map {
+                        it.name
+                    })
+                }
+            }
+        }
+    }
 
     fun onAction(action: CreateQuizScreenAction) {
         when (action) {
             is CreateQuizScreenAction.OnDismiss -> {
-                viewModelScope.launch {
-                    _uiState.update {
-                        currentState -> currentState.copy(
-                            pendingEffect = CreateQuizScreenEffect.Dismiss
-                        )
-                    }
+                _uiState.update { currentState ->
+                    currentState.copy(pendingEffect = CreateQuizScreenEffect.Dismiss)
                 }
             }
             is CreateQuizScreenAction.OnGenerateQuizButtonClick -> {
                 generateQuiz()
             }
             is CreateQuizScreenAction.OnFileButtonClick -> {
-                viewModelScope.launch {
-                    _uiState.update {
-                        currentState -> currentState.copy(
-                            pendingEffect = CreateQuizScreenEffect.OpenFilePicker
+                _uiState.update { currentState ->
+                    currentState.copy(pendingEffect = CreateQuizScreenEffect.OpenFilePicker)
+                }
+            }
+            is CreateQuizScreenAction.OnAddAttachment -> {
+                if (_uiState.value.attachments.size < 3) {
+                    val displayName = resolveUriDisplayName(action.uri)
+                    _uiState.update { currentState ->
+                        currentState.copy(
+                            attachments = currentState.attachments + AttachmentPreview(
+                                type = action.attachmentType,
+                                name = displayName,
+                                uri = action.uri
+                            )
                         )
                     }
                 }
             }
-            is CreateQuizScreenAction.OnAddAttachment -> {
-                val currentList = _uiState.value.attachments
-                if (currentList.size < 3) {
-                    val displayName = resolveUriDisplayName(action.uri)
-                    _uiState.update { currentState -> currentState.copy(
-                        attachments = currentState.attachments +
-                                AttachmentPreview(
-                                    type = action.attachmentType,
-                                    name = displayName,
-                                    uri = action.uri
-                                )
-                    )}
-                }
-            }
             is CreateQuizScreenAction.OnRemoveAttachment -> {
-                _uiState.update { currentState -> currentState.copy(
-                    attachments = _uiState.value.attachments.filterNot { it == action.attachment }
-                )}
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        attachments = currentState.attachments.filterNot { it == action.attachment }
+                    )
+                }
             }
             is CreateQuizScreenAction.OnQuizScreenDifficultyChange -> {
-                _uiState.update { currentState ->
-                    currentState.copy(quizDifficulty = action.quizDifficulty)
-                }
+                _uiState.update { it.copy(quizDifficulty = action.quizDifficulty) }
             }
             is CreateQuizScreenAction.OnQuizScreenSizeChange -> {
-                _uiState.update { currentState ->
-                    currentState.copy(quizSize = action.quizSize)
-                }
+                _uiState.update { it.copy(quizSize = action.quizSize) }
             }
             is CreateQuizScreenAction.OnQuizScreenSummaryChange -> {
-                _uiState.update { currentState ->
-                    currentState.copy(quizSummary = action.quizSummary)
-                }
+                _uiState.update { it.copy(quizSummary = action.quizSummary) }
             }
-            else -> Unit
+            is CreateQuizScreenAction.OnQuizNameChange -> {
+                _uiState.update { it.copy(quizName = action.name) }
+            }
+            is CreateQuizScreenAction.OnCollectionNameChange -> {
+                _uiState.update { it.copy(collectionName = action.name) }
+            }
+            is CreateQuizScreenAction.OnCollectionModeChange -> {
+                _uiState.update { it.copy(collectionMode = action.mode) }
+            }
+            is CreateQuizScreenAction.OnCollectionSelected -> {
+                _uiState.update { it.copy(selectedCollection = action.collectionName) }
+            }
+            is CreateQuizScreenAction.OnConfirmQuizCreation -> {
+                confirmQuizCreation()
+            }
         }
     }
 
-
     private fun generateQuiz() {
         viewModelScope.launch {
+            _uiState.update { it.copy(currentStep = CreateQuizStep.GENERATING) }
+            
             val state = _uiState.value
-            val result = repository.generateQuiz(
-                difficulty = state.quizDifficulty.name.lowercase(),
-                size = state.quizSize.name.lowercase(),
-                quizSummary = state.quizSummary,
-                files = state.attachments
-                    .filter { it.type == AttachmentType.FILE }
-                    .map { attachmentPreview ->
-                        context.uriToFile(attachmentPreview.uri)
-                    }
-                ,
-                links = state.attachments
-                    .filter { it.type == AttachmentType.LINK }
-                    .map { it.uri.toString() }
-            )
-            val quizId = repository.uploadQuiz(result)
-            quizId?: return@launch
-            _uiState.update {
-                currentState -> currentState.copy(
-                    pendingEffect = CreateQuizScreenEffect.QuizGenerated(quizId)
+            try {
+                val result = repository.generateQuiz(
+                    difficulty = state.quizDifficulty.name.lowercase(),
+                    size = state.quizSize.name.lowercase(),
+                    quizSummary = state.quizSummary,
+                    files = state.attachments
+                        .filter { it.type == AttachmentType.FILE }
+                        .map { context.uriToFile(it.uri) },
+                    links = state.attachments
+                        .filter { it.type == AttachmentType.LINK }
+                        .map { it.uri.toString() }
                 )
+                
+                val quizId = repository.uploadQuiz(result)
+                if (quizId != null) {
+                    _uiState.update { it.copy(
+                        currentStep = CreateQuizStep.CONFIRMATION,
+                        generatedQuizId = quizId,
+                        quizName = result.quiz.title,
+                        collectionName = result.quiz.quizCollection.name
+                    ) }
+                } else {
+                    // Handle error, maybe go back to config
+                    _uiState.update { it.copy(currentStep = CreateQuizStep.CONFIGURATION) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(currentStep = CreateQuizStep.CONFIGURATION) }
             }
+        }
+    }
+
+    private fun confirmQuizCreation() {
+        val state = _uiState.value
+        val quizId = state.generatedQuizId ?: return
+        
+        viewModelScope.launch {
+            repository.updateQuizDetails(quizId, state.quizName, state.collectionName)
+            
+            _uiState.update { it.copy(
+                pendingEffect = CreateQuizScreenEffect.QuizGenerated(quizId)
+            ) }
         }
     }
 
@@ -137,7 +177,6 @@ class CreateQuizScreenViewModel @Inject constructor(
             }
         }
 
-        // Fallbacks when provider doesn't expose DISPLAY_NAME
         val lastSegment = uri.lastPathSegment?.substringAfterLast('/')?.takeIf { it.isNotBlank() }
         if (lastSegment != null) return lastSegment
 

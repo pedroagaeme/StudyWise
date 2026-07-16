@@ -6,6 +6,7 @@ import com.example.studywise.data.repository.QuizRepository
 import com.example.studywise.ui.screens.tabs.search.SearchScreenAction
 import com.example.studywise.ui.screens.tabs.search.SearchScreenEffect
 import com.example.studywise.ui.screens.tabs.search.SearchScreenUiState
+import com.example.studywise.ui.screens.tabs.search.SearchStep
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,11 +35,17 @@ class SearchScreenViewModel @Inject constructor(
         _uiState
             .map { it.searchQuery.trim() }
             .distinctUntilChanged()
+            .onEach {
+                _uiState.update { it.copy(currentStep = SearchStep.LOADING) }
+            }
             .flatMapLatest { query ->
                 repository.getFilteredQuizzes(query)
             }
             .onEach { quizzes ->
-                _uiState.update { it.copy(filteredQuizzes = quizzes) }
+                _uiState.update { it.copy(
+                    filteredQuizzes = quizzes,
+                    currentStep = if (quizzes.isEmpty()) SearchStep.EMPTY else SearchStep.HAS_CONTENT
+                ) }
             }
             .launchIn(viewModelScope)
     }
@@ -69,6 +76,3 @@ class SearchScreenViewModel @Inject constructor(
         }
     }
 }
-
-
-

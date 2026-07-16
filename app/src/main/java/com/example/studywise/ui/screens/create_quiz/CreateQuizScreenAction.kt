@@ -11,6 +11,11 @@ sealed interface CreateQuizScreenAction {
     data class OnRemoveAttachment(val attachment: AttachmentPreview) : CreateQuizScreenAction
     data object OnGenerateQuizButtonClick : CreateQuizScreenAction
     data object OnFileButtonClick : CreateQuizScreenAction
-
+    
+    // Step 3 Actions
+    data class OnQuizNameChange(val name: String) : CreateQuizScreenAction
+    data class OnCollectionNameChange(val name: String) : CreateQuizScreenAction
+    data class OnCollectionModeChange(val mode: CollectionMode) : CreateQuizScreenAction
+    data class OnCollectionSelected(val collectionName: String) : CreateQuizScreenAction
+    data object OnConfirmQuizCreation : CreateQuizScreenAction
 }
-

@@ -2,10 +2,12 @@ package com.example.studywise.ui.screens.create_quiz
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -14,18 +16,13 @@ import androidx.compose.material.icons.rounded.AttachFile
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.studywise.ui.components.stack_screen.StackScreen
@@ -48,12 +45,11 @@ fun CreateQuizScreen(
         }
     )
 
-
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val onAction = viewModel::onAction
 
     LaunchedEffect(uiState.pendingEffect) {
-        uiState.pendingEffect.let { effect ->
+        uiState.pendingEffect?.let { effect ->
             when (effect) {
                 is CreateQuizScreenEffect.OpenFilePicker -> {
                     launcher.launch(
@@ -84,8 +80,46 @@ fun CreateQuizScreen(
         modifier = modifier
     )
 }
+
 @Composable
 fun CreateQuizScreenContent(
+    state: CreateQuizUiState,
+    onAction: (CreateQuizScreenAction) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    AnimatedContent(
+        targetState = state.currentStep,
+        transitionSpec = {
+            fadeIn() togetherWith fadeOut()
+        },
+        label = "CreateQuizStepTransition"
+    ) { step ->
+        when (step) {
+            CreateQuizStep.CONFIGURATION -> {
+                CreateQuizStep1Screen(
+                    state = state,
+                    onAction = onAction,
+                    modifier = modifier
+                )
+            }
+
+            CreateQuizStep.GENERATING -> {
+                CreateQuizStep2Screen(modifier = modifier)
+            }
+
+            CreateQuizStep.CONFIRMATION -> {
+                CreateQuizStep3Screen(
+                    state = state,
+                    onAction = onAction,
+                    modifier = modifier
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun CreateQuizStep1Screen(
     state: CreateQuizUiState,
     onAction: (CreateQuizScreenAction) -> Unit,
     modifier: Modifier = Modifier
@@ -128,7 +162,7 @@ fun CreateQuizScreenContent(
                 )
 
                 SelectorRow(
-                    options = QuizSize.entries,
+                    options = QuizSize.entries.toList(),
                     selectedOption = state.quizSize,
                     optionLabel = { it.label },
                     onSelect = { onAction(CreateQuizScreenAction.OnQuizScreenSizeChange(it)) }
@@ -140,7 +174,7 @@ fun CreateQuizScreenContent(
                 )
 
                 SelectorRow(
-                    options = QuizDifficulty.entries,
+                    options = QuizDifficulty.entries.toList(),
                     selectedOption = state.quizDifficulty,
                     optionLabel = { it.label },
                     onSelect = { onAction(CreateQuizScreenAction.OnQuizScreenDifficultyChange(it)) }
@@ -201,7 +235,7 @@ fun CreateQuizScreenContent(
                     }
 
                     Button(
-                        onClick = { onAction(CreateQuizScreenAction.OnFileButtonClick) },
+                        onClick = { /* Implement link addition if needed */ },
                         enabled = canAddMore,
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp),
@@ -243,6 +277,160 @@ fun CreateQuizScreenContent(
 }
 
 @Composable
+fun CreateQuizStep2Screen(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surface),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+            Text(
+                "Generating your quiz...",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+            )
+            Text(
+                "This may take a few seconds",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CreateQuizStep3Screen(
+    state: CreateQuizUiState,
+    onAction: (CreateQuizScreenAction) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // enter animation progress for this screen
+    val enterProgressState = remember { mutableStateOf(0f) }
+    LaunchedEffect(Unit) {
+        enterProgressState.value = 1f
+    }
+
+    StackScreen(
+        title = "Finalize Quiz",
+        modifier = modifier,
+        onBackClick = { onAction(CreateQuizScreenAction.OnDismiss) },
+        transitionProgress = enterProgressState.value,
+        navigationIcon = {
+            IconButton(onClick = { onAction(CreateQuizScreenAction.OnDismiss) }) {
+                Icon(Icons.Rounded.Close, contentDescription = "Close")
+            }
+        }
+    ) { contentModifier ->
+        Column(
+            modifier = contentModifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 24.dp)
+                .padding(WindowInsets.navigationBars.asPaddingValues()),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    "Quiz Name",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                )
+                OutlinedTextField(
+                    value = state.quizName,
+                    onValueChange = { onAction(CreateQuizScreenAction.OnQuizNameChange(it)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    placeholder = { Text("Enter quiz name") }
+                )
+
+                Text(
+                    "Collection",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                )
+
+                SelectorRow(
+                    options = CollectionMode.entries.toList(),
+                    selectedOption = state.collectionMode,
+                    optionLabel = { if (it == CollectionMode.NEW) "New" else "Existing" },
+                    onSelect = { onAction(CreateQuizScreenAction.OnCollectionModeChange(it)) }
+                )
+
+                if (state.collectionMode == CollectionMode.NEW) {
+                    OutlinedTextField(
+                        value = state.collectionName,
+                        onValueChange = { onAction(CreateQuizScreenAction.OnCollectionNameChange(it)) },
+                        placeholder = { Text("Collection name (e.g. Biology)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                } else {
+                    var expanded by remember { mutableStateOf(false) }
+                    ExposedDropdownMenuBox(
+                        expanded = expanded,
+                        onExpandedChange = { expanded = !expanded }
+                    ) {
+                        OutlinedTextField(
+                            value = state.selectedCollection ?: "Select a collection",
+                            onValueChange = {},
+                            readOnly = true,
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                            modifier = Modifier
+                                .menuAnchor()
+                                .fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = OutlinedTextFieldDefaults.colors()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
+                        ) {
+                            state.existingCollections.forEach { collection ->
+                                DropdownMenuItem(
+                                    text = { Text(collection) },
+                                    onClick = {
+                                        onAction(CreateQuizScreenAction.OnCollectionSelected(collection))
+                                        expanded = false
+                                    }
+                                )
+                            }
+                            if (state.existingCollections.isEmpty()) {
+                                DropdownMenuItem(
+                                    text = { Text("No collections found", style = MaterialTheme.typography.bodySmall) },
+                                    onClick = { expanded = false },
+                                    enabled = false
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Button(
+                onClick = { onAction(CreateQuizScreenAction.OnConfirmQuizCreation) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Text(
+                    "Confirm and Start",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun <T> SelectorRow(
     options: List<T>,
     selectedOption: T,
@@ -257,7 +445,13 @@ private fun <T> SelectorRow(
             FilterChip(
                 selected = selectedOption == option,
                 onClick = { onSelect(option) },
-                label = { Text(optionLabel(option)) },
+                label = {
+                    Text(
+                        text = optionLabel(option),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                },
                 modifier = Modifier.weight(1f)
             )
         }
@@ -328,10 +522,12 @@ fun CreateQuizScreenPreview() {
                     is CreateQuizScreenAction.OnQuizScreenSummaryChange ->
                         state.copy(quizSummary = action.quizSummary)
 
+                    is CreateQuizScreenAction.OnCollectionModeChange ->
+                        state.copy(collectionMode = action.mode)
+
                     else -> state
                 }
             }
         )
     }
 }
-

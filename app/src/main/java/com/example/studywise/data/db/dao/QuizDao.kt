@@ -52,7 +52,6 @@ interface QuizDao {
 
         return quiz.id
     }
-
     @Transaction
     suspend fun populateQuizAttempt(
         quizAttempt: QuizAttemptEntity,
@@ -66,7 +65,26 @@ interface QuizDao {
         }
     }
 
+    @Transaction
+    suspend fun createIfDoesNotExistCollection(
+        collectionName: String,
+        generateNewId: () -> String,
+        now: () -> String
+    ): QuizCollectionEntity {
+        val existingCollection = getCollectionByName(collectionName)
+        if (existingCollection != null) {
+            return existingCollection
+        }
+        val newCollection = QuizCollectionEntity(
+            id = generateNewId(),
+            name = collectionName,
+            createdAt = now(),
+            updatedAt = now()
+        )
+        insert(newCollection)
+        return newCollection
 
+    }
 
     @Delete
     suspend fun delete(quiz: QuizEntity)
@@ -94,6 +112,9 @@ interface QuizDao {
     """)
     fun getCollectionsWithQuizzes(): Flow<List<CollectionWithQuizzes>>
 
+    @Query("SELECT * FROM quiz_collection")
+    fun getCollections(): Flow<List<QuizCollectionEntity>>
+
     @Query("SELECT * FROM QuizBasicInfoView WHERE title LIKE '%' || :query || '%' OR collectionName LIKE '%' || :query || '%'")
     fun getFilteredQuizzes(query: String): Flow<List<QuizBasicInfo>>
     @Query("SELECT * FROM quiz_attempt WHERE quizId = :quizId ORDER BY createdAt DESC LIMIT 1")
@@ -115,5 +136,11 @@ interface QuizDao {
     @Query("SELECT * FROM question_attempt WHERE quizAttemptId = :quizAttemptId ORDER BY sortOrder")
     suspend fun getQuestionsAttemptedByQuizAttemptId(quizAttemptId: String): List<QuestionAttemptEntity>
 
-
+    @Query("UPDATE quiz SET title = :title, quizCollectionId = :collectionId, updatedAt = :updatedAt WHERE id = :quizId")
+    suspend fun updateQuizData(
+        quizId: String,
+        title: String,
+        collectionId: String,
+        updatedAt: String
+    )
 }

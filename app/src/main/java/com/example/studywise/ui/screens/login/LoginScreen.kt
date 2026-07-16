@@ -1,5 +1,6 @@
 package com.example.studywise.ui.screens.login
 
+import androidx.compose.animation.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -28,7 +29,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.studywise.R
 import com.example.studywise.ui.theme.AppTheme
-import com.example.studywise.utils.ObserveAsEvents
 import com.example.studywise.viewmodels.LoginScreenViewModel
 
 @Composable
@@ -51,12 +51,31 @@ fun LoginScreen (
         }
     }
 
-    LoginScreenContent(
-        modifier = modifier,
-        state = uiState,
-        onAction = onAction
-    )
+    AnimatedContent(
+        targetState = uiState.currentStep,
+        transitionSpec = { fadeIn() togetherWith fadeOut() },
+        label = "LoginStepTransition"
+    ) { step ->
+        when (step) {
+            LoginStep.LOADING -> {
+                Box(
+                    modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                }
+            }
+            LoginStep.NOT_LOADING -> {
+                LoginScreenContent(
+                    modifier = modifier,
+                    state = uiState,
+                    onAction = onAction
+                )
+            }
+        }
+    }
 }
+
 @Composable
 fun LoginScreenContent(
     modifier: Modifier = Modifier,
@@ -233,7 +252,7 @@ fun LoginScreenContent(
 fun LoginScreenPreview() {
     AppTheme {
         LoginScreenContent(
-            state = LoginScreenUiState(),
+            state = LoginScreenUiState(currentStep = LoginStep.NOT_LOADING),
             onAction = {}
         )
     }
