@@ -40,8 +40,9 @@ fun CreateQuizScreen(
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
         onResult = { uri ->
-            if (uri != null)
+            if (uri != null) {
                 viewModel.onAction(CreateQuizScreenAction.OnAddAttachment(AttachmentType.FILE, uri))
+            }
         }
     )
 
@@ -59,6 +60,7 @@ fun CreateQuizScreen(
                             "video/*"
                         )
                     )
+                    viewModel.effectConsumed()
                 }
 
                 is CreateQuizScreenEffect.Dismiss -> {
@@ -71,6 +73,7 @@ fun CreateQuizScreen(
 
                 else -> Unit
             }
+
         }
     }
 

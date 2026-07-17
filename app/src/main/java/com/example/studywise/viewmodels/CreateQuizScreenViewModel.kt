@@ -51,6 +51,12 @@ class CreateQuizScreenViewModel @Inject constructor(
         }
     }
 
+    fun effectConsumed() {
+        _uiState.update {
+            it.copy(pendingEffect = null)
+        }
+    }
+
     fun onAction(action: CreateQuizScreenAction) {
         when (action) {
             is CreateQuizScreenAction.OnDismiss -> {
