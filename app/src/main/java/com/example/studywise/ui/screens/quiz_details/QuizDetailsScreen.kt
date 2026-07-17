@@ -302,7 +302,7 @@ fun QuizDetailsScreenContent(
             }
 
             Text(
-                text = "Quiz Informations",
+                text = "Quiz Information",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             )
 

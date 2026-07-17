@@ -293,10 +293,6 @@ fun CreateQuizStep2Screen(modifier: Modifier = Modifier) {
         ) {
             CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             Text(
-                "Generating your quiz...",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-            )
-            Text(
                 "This may take a few seconds",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -312,7 +308,6 @@ fun CreateQuizStep3Screen(
     onAction: (CreateQuizScreenAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // enter animation progress for this screen
     val enterProgressState = remember { mutableStateOf(0f) }
     LaunchedEffect(Unit) {
         enterProgressState.value = 1f

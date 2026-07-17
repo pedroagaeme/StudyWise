@@ -11,7 +11,7 @@ import androidx.room.Index
         entity = QuizCollectionEntity::class,
         parentColumns = ["id"],
         childColumns = ["quizCollectionId"],
-        onDelete = ForeignKey.SET_NULL
+        onDelete = ForeignKey.CASCADE
     )],
     indices = [Index("quizCollectionId")]
 )

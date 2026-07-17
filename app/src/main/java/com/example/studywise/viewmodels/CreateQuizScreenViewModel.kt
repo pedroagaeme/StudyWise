@@ -112,7 +112,10 @@ class CreateQuizScreenViewModel @Inject constructor(
                 _uiState.update { it.copy(collectionMode = action.mode) }
             }
             is CreateQuizScreenAction.OnCollectionSelected -> {
-                _uiState.update { it.copy(selectedCollection = action.collectionName) }
+                _uiState.update { it.copy(
+                    selectedCollection = action.collectionName,
+                    collectionName = action.collectionName,
+                ) }
             }
             is CreateQuizScreenAction.OnConfirmQuizCreation -> {
                 confirmQuizCreation()
