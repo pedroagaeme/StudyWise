@@ -1,6 +1,7 @@
 package com.example.studywise.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
@@ -14,6 +15,7 @@ import com.example.studywise.ui.screens.create_quiz.CreateQuizScreen
 import com.example.studywise.ui.screens.login.LoginScreen
 import com.example.studywise.ui.screens.quiz_details.QuizDetailsScreen
 import com.example.studywise.ui.screens.review_attempt.ReviewAttemptScreen
+import com.example.studywise.ui.screens.signup.SignUpScreen
 import com.example.studywise.ui.screens.tabs.MainScreen
 import com.example.studywise.viewmodels.AnswerQuizScreenViewModel
 import com.example.studywise.viewmodels.QuizDetailsViewModel
@@ -31,9 +33,19 @@ private fun <T> MutableList<T>.pop() {
 
 @Composable
 fun NavigationRoot(
-    modifier: Modifier = Modifier
-){
+    modifier: Modifier = Modifier,
+    navigateToTabsAfterVerification: Boolean = false,
+    onNavigatedToTabsAfterVerification: () -> Unit = {}
+) {
     val backStack = rememberNavBackStack(Route.Intro)
+
+    LaunchedEffect(navigateToTabsAfterVerification) {
+        if (navigateToTabsAfterVerification) {
+            backStack.clear()
+            backStack.add(Route.Tabs)
+            onNavigatedToTabsAfterVerification()
+        }
+    }
 
     NavDisplay(
         modifier = modifier,
@@ -53,6 +65,20 @@ fun NavigationRoot(
                     NavEntry(key) {
                         LoginScreen(
                             replaceWithTabsRoute = { backStack.replaceTop(Route.Tabs) },
+                            pushSignUpRoute = { backStack.add(Route.SignUp) }
+                        )
+                    }
+                }
+                is Route.SignUp -> {
+                    NavEntry(key) {
+                        SignUpScreen(
+                            goBackToLogin = {
+                                if (backStack.lastOrNull() is Route.SignUp) {
+                                    backStack.pop()
+                                } else {
+                                    backStack.replaceTop(Route.Login)
+                                }
+                            }
                         )
                     }
                 }
@@ -65,6 +91,10 @@ fun NavigationRoot(
                             },
                             pushAnswerQuizRoute = { quizId: String ->
                                 backStack.add(Route.AnswerQuiz(quizId))
+                            },
+                            replaceWithLoginRoute = {
+                                backStack.clear()
+                                backStack.add(Route.Login)
                             }
                         )
                     }

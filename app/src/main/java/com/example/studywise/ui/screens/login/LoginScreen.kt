@@ -35,7 +35,8 @@ import com.example.studywise.viewmodels.LoginScreenViewModel
 fun LoginScreen (
     modifier: Modifier = Modifier,
     viewModel: LoginScreenViewModel = hiltViewModel(),
-    replaceWithTabsRoute: () -> Unit = {}
+    replaceWithTabsRoute: () -> Unit = {},
+    pushSignUpRoute: () -> Unit = {}
 ) {
 
     val uiState by viewModel.uiState.collectAsState()
@@ -45,6 +46,7 @@ fun LoginScreen (
         uiState.pendingEffect?.let { effect ->
             when (effect) {
                 is LoginScreenEffect.LoginSuccess -> replaceWithTabsRoute()
+                is LoginScreenEffect.NavigateToSignUpScreen -> pushSignUpRoute()
                 else -> Unit
             }
             viewModel.effectConsumed()

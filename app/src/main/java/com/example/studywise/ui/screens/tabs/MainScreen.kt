@@ -17,13 +17,15 @@ import androidx.compose.ui.unit.dp
 import com.example.studywise.ui.screens.tabs.home.HomeScreen
 import com.example.studywise.ui.screens.tabs.components.MainNavigationItem
 import com.example.studywise.ui.screens.tabs.search.SearchScreen
+import com.example.studywise.ui.screens.tabs.settings.SettingsScreen
 import com.example.studywise.ui.theme.AppTheme
 
 @Composable
 fun MainScreen(
     pushCreateQuizRoute: () -> Unit = {},
     pushQuizDetailsRoute: (String) -> Unit = {},
-    pushAnswerQuizRoute: (String) -> Unit = {}
+    pushAnswerQuizRoute: (String) -> Unit = {},
+    replaceWithLoginRoute: () -> Unit = {}
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
 
@@ -78,7 +80,7 @@ fun MainScreen(
                         )
                         MainNavigationItem(
                             icon = Icons.Rounded.Settings,
-                            label = "Config",
+                            label = "Settings",
                             isSelected = selectedTab == 3,
                             onClick = { selectedTab = 3 },
                             modifier = Modifier.weight(1f)
@@ -98,7 +100,10 @@ fun MainScreen(
                 0 -> HomeScreen(innerPadding = innerPadding, pushQuizDetailsRoute = pushQuizDetailsRoute)
                 1 -> SearchScreen(innerPadding = innerPadding, pushQuizDetailsRoute = pushQuizDetailsRoute)
                 2 -> PlaceholderScreen()
-                3 -> PlaceholderScreen()
+                3 -> SettingsScreen(
+                    innerPadding = innerPadding,
+                    replaceWithLoginRoute = replaceWithLoginRoute
+                )
             }
         }
     }

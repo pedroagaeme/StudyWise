@@ -18,4 +18,6 @@ class AuthRepository @Inject constructor()
     suspend fun getCurrentUser() = Appwrite.getCurrentUser()
     suspend fun isSessionActive() = Appwrite.isSessionActive()
     suspend fun sendVerification(url: String) = Appwrite.sendVerification(url)
+    suspend fun confirmVerification(userId: String, secret: String) =
+        Appwrite.confirmVerification(userId, secret)
 }
